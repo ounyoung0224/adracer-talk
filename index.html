@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ad-racer 업무톡</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1b1d22">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="업무톡">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+:root{
+  --side:#1b1d22; --side2:#26292f; --sidetext:#c9cbd1; --sidemute:#8a8d96;
+  --ink:#1d1c1d; --ink2:#454245; --mute:#868686; --line:#e6e6e6; --bg:#fff; --soft:#f7f7f8; --hover:#f4f4f5;
+  --accent:#ff5a1f; --accent-soft:#fff0ea;
+  --ok:#16a34a; --todo:#2563eb; --q:#ea580c; --idea:#ca8a04; --pm:#111827;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'IBM Plex Sans KR',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.46;-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+.app{display:flex;height:100dvh;position:relative}
+
+/* ---------- sidebar ---------- */
+.side{width:260px;flex:none;background:var(--side);color:var(--sidetext);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+.ws{padding:14px 16px 12px;border-bottom:1px solid #2f3238;display:flex;align-items:center;gap:10px}
+.ws .mark{width:34px;height:34px;border-radius:8px;background:var(--accent);color:#fff;font-family:'Archivo Black';font-size:13px;display:flex;align-items:center;justify-content:center}
+.ws b{color:#fff;font-size:16px;display:block;line-height:1.2}
+.ws small{font-size:12px;color:var(--sidemute)}
+.sidescroll{flex:1;overflow-y:auto;padding:10px 8px 20px}
+.sgroup{margin-bottom:14px}
+.sgroup h5{font-size:12px;font-weight:600;color:var(--sidemute);padding:4px 10px;letter-spacing:.2px}
+.sitem{display:flex;align-items:center;gap:9px;width:100%;padding:6px 10px;border-radius:7px;font-size:14.5px;color:var(--sidetext);text-align:left}
+.sitem:hover{background:var(--side2)}
+.sitem.on{background:var(--accent);color:#fff}
+.sitem .ic{width:18px;text-align:center;flex:none;opacity:.9}
+.sitem .lbl{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sitem.unread .lbl{color:#fff;font-weight:700}
+.sitem .cnt{font-size:11px;font-weight:700;background:var(--accent);color:#fff;border-radius:9px;padding:0 6px;line-height:18px}
+.sitem.on .cnt{background:#fff;color:var(--accent)}
+.sitem .hash{color:var(--sidemute);font-weight:600}
+.sitem.on .hash{color:#fff}
+.mebox{border-top:1px solid #2f3238;padding:10px 14px calc(10px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:10px;font-size:13px}
+.mebox button{margin-left:auto;font-size:12px;color:var(--sidemute);text-decoration:underline}
+.scrim{display:none}
+
+/* ---------- main ---------- */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)}
+.top{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;border-bottom:1px solid var(--line);min-height:56px}
+.burger{display:none;font-size:20px;padding:2px 6px}
+.ttl{min-width:0;flex:1}
+.ttl h1{font-size:17px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ttl p{font-size:12.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tbtn{font-size:13px;font-weight:600;border:1px solid var(--line);border-radius:8px;padding:6px 10px;white-space:nowrap;background:#fff}
+.tbtn:hover{background:var(--hover)}
+.tbtn.pm{background:var(--pm);color:#fff;border-color:var(--pm)}
+.banner{padding:8px 16px;font-size:13px;background:#fff7e0;color:#7a5600;border-bottom:1px solid #f1df9e}
+.banner.err{background:#fde8e6;color:#9b1c1c;border-color:#f3bcb4}
+.body{flex:1;min-height:0;display:flex}
+.pane{flex:1;min-width:0;display:flex;flex-direction:column}
+.scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+
+/* messages (slack style) */
+.feed{padding:8px 0 14px}
+.divider{display:flex;align-items:center;margin:14px 0 4px;padding:0 16px}
+.divider::before,.divider::after{content:"";flex:1;border-top:1px solid var(--line)}
+.divider span{font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:12px;padding:2px 12px;margin:0 8px;background:#fff}
+.m{display:flex;gap:10px;padding:6px 16px;position:relative}
+.m:hover{background:var(--soft)}
+.m.sel{background:#fff8e6}
+.av{width:36px;height:36px;border-radius:8px;flex:none;color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center}
+.av.sm{width:22px;height:22px;border-radius:5px;font-size:11px}
+.mb{flex:1;min-width:0}
+.mh{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.mh b{font-weight:700;font-size:15px}
+.mh .t{font-size:12px;color:var(--mute)}
+.mh .appb{font-size:10px;font-weight:700;background:#eee;color:#555;border-radius:4px;padding:0 5px}
+.mt{white-space:pre-wrap;word-break:break-word;margin-top:1px}
+.mt a{color:#1264a3}
+.mt.done{color:var(--mute);text-decoration:line-through}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:5px;color:#fff;white-space:nowrap}
+.kb{font-size:11.5px;font-weight:700;padding:1px 8px;border-radius:5px;white-space:nowrap}
+.kb.decision{background:#dcfce7;color:#166534}.kb.todo{background:#dbeafe;color:#1e40af}
+.kb.question{background:#ffedd5;color:#9a3412}.kb.idea{background:#fef9c3;color:#854d0e}
+.kb.doing{background:#ede9fe;color:#5b21b6}.kb.grey{background:#efefef;color:#666}.kb.red{background:#fee2e2;color:#b91c1c}
+.src{font-size:10.5px;color:var(--mute);background:#f1f1f1;border-radius:4px;padding:1px 6px}
+.reacts{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.rx{font-size:12.5px;border:1px solid var(--line);border-radius:12px;padding:1px 8px;background:#fff;display:inline-flex;gap:4px;align-items:center}
+.rx.me{border-color:#1264a3;background:#e8f2fb}
+.thr{display:inline-flex;align-items:center;gap:6px;margin-top:5px;font-size:13px;font-weight:700;color:#1264a3;padding:2px 6px 2px 2px;border-radius:6px}
+.thr:hover{background:#fff;box-shadow:0 0 0 1px var(--line)}
+.thr .last{font-weight:400;color:var(--mute);font-size:12px}
+.hov{position:absolute;right:14px;top:-12px;display:none;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:2px}
+.m:hover .hov{display:flex}
+.hov button{padding:4px 7px;border-radius:6px;font-size:14px}
+.hov button:hover{background:var(--hover)}
+.sugg{margin-top:8px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.sugg h6{font-size:11.5px;font-weight:700;color:var(--mute);padding:6px 10px;background:var(--soft)}
+.sg{display:flex;gap:8px;align-items:center;padding:7px 10px;border-top:1px solid var(--line);font-size:13.5px}
+.sg .x{flex:1;min-width:0}
+.sg button{font-size:12px;font-weight:700;border-radius:6px;padding:4px 10px;background:var(--pm);color:#fff;flex:none}
+.sg button:disabled{background:#ddd;color:#777}
+.typing{padding:6px 16px;font-size:13px;color:var(--mute);display:flex;align-items:center;gap:8px}
+.dots span{display:inline-block;width:6px;height:6px;border-radius:50%;background:#999;margin-right:2px;animation:b 1s infinite}
+.dots span:nth-child(2){animation-delay:.15s}.dots span:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.empty{padding:40px 24px;text-align:center;color:var(--mute);font-size:14px}
+.intro{padding:20px 16px 6px}
+.intro h2{font-size:20px;font-weight:700}
+.intro p{color:var(--mute);font-size:14px;margin-top:2px}
+
+/* composer */
+.comp{padding:6px 14px calc(12px + env(safe-area-inset-bottom))}
+.cbox{border:1px solid #c9c9c9;border-radius:10px;background:#fff}
+.cbox:focus-within{border-color:#8a8a8a;box-shadow:0 0 0 3px rgba(0,0,0,.04)}
+.cbox textarea{width:100%;border:0;outline:0;resize:none;padding:10px 12px 4px;font-size:15px;max-height:160px;background:transparent;line-height:1.45;display:block}
+.ctool{display:flex;align-items:center;gap:6px;padding:4px 6px 6px;flex-wrap:wrap}
+.pill{font-size:12.5px;font-weight:600;border:1px solid var(--line);border-radius:7px;padding:3px 8px;background:#fff;display:inline-flex;align-items:center;gap:4px}
+.pill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+select.pill{appearance:none;-webkit-appearance:none;padding-right:20px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23666' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 6px center}
+input.pill{padding:2px 6px}
+.ctool .sp{flex:1}
+.sendb{width:34px;height:30px;border-radius:7px;background:#e5e5e5;color:#888;display:flex;align-items:center;justify-content:center;font-size:15px}
+.sendb.ready{background:#007a5a;color:#fff}
+.ptray{display:flex;flex-wrap:wrap;gap:5px;padding:6px 8px;border-top:1px dashed var(--line)}
+.ptray .chip{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:2px 9px;display:inline-flex;align-items:center;gap:5px;background:#fff}
+.ptray .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.chint{font-size:11px;color:var(--mute);margin:4px 2px 0}
+.ro{padding:14px 16px;font-size:13px;color:var(--mute);border-top:1px solid var(--line);text-align:center}
+
+/* thread panel */
+.thread{width:380px;flex:none;border-left:1px solid var(--line);display:none;flex-direction:column;background:#fff}
+.thread.on{display:flex}
+.thead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.thead b{font-size:16px}
+.thead small{color:var(--mute);font-size:12px}
+.thead .x{margin-left:auto;font-size:20px;padding:0 6px}
+.troot{border-bottom:1px solid var(--line);padding-bottom:6px}
+.rcount{padding:8px 16px 0;font-size:12px;color:var(--mute);display:flex;align-items:center;gap:8px}
+.rcount::after{content:"";flex:1;border-top:1px solid var(--line)}
+
+/* pages (home, tasks, decisions) */
+.page{padding:18px 18px 40px;max-width:980px}
+.page h2{font-size:18px;font-weight:700;margin-bottom:2px}
+.page .sub{font-size:13px;color:var(--mute);margin-bottom:12px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0 18px}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;background:#fff}
+.kpi:hover{background:var(--soft)}
+.kpi b{font-size:24px;display:block;line-height:1.1}
+.kpi span{font-size:12px;color:var(--mute)}
+.kpi.warn b{color:var(--q)}
+.card{border:1px solid var(--line);border-radius:14px;background:#fff;margin-bottom:16px;overflow:hidden}
+.card>h3{font-size:14.5px;font-weight:700;padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.card>h3 .r{margin-left:auto;display:flex;gap:6px}
+.cbody{padding:12px 14px}
+.pmcard{border-color:#d4d4d8}
+.pmcard>h3{background:var(--pm);color:#fff;border-color:var(--pm)}
+.pmcard>h3 .tbtn{background:#fff;color:var(--pm);border-color:#fff}
+.pmcard>h3 .tbtn.ghost{background:transparent;color:#fff;border-color:#555}
+.headline{font-size:15.5px;font-weight:600;margin-bottom:10px}
+.pmsec{margin:12px 0 4px;font-size:12px;font-weight:700;color:var(--mute);letter-spacing:.3px}
+.pmrow{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-top:1px solid #f0f0f0;font-size:14px}
+.pmrow:first-of-type{border-top:0}
+.pmrow .x{flex:1;min-width:0}
+.pmrow .x small{display:block;color:var(--mute);font-size:12px}
+.pmrow button{font-size:12px;font-weight:700;border:1px solid var(--line);border-radius:6px;padding:3px 9px;flex:none;background:#fff}
+.health{display:flex;flex-wrap:wrap;gap:6px}
+.hl{font-size:12px;border-radius:7px;padding:4px 8px;border:1px solid var(--line);background:#fff;max-width:100%}
+.hl i{font-style:normal;font-weight:700;margin-right:4px}
+.pmmeta{font-size:11.5px;color:var(--mute);margin-top:10px}
+.pmout{font-size:14px;color:var(--ink2)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.mapwrap{background:var(--side);border-radius:12px;padding:4px}
+.mapwrap svg{width:100%;height:auto;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:#aaa;padding:2px 10px 8px}
+.node{cursor:pointer}
+
+/* tasks board */
+.kanban{display:grid;grid-template-columns:repeat(3,minmax(250px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
+.col{background:var(--soft);border-radius:12px;padding:10px;min-height:120px}
+.col h4{font-size:13px;font-weight:700;margin:2px 4px 8px;display:flex;align-items:center;gap:6px}
+.col h4 .n{color:var(--mute);font-weight:500}
+.tk{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;cursor:pointer;box-shadow:0 1px 1px rgba(0,0,0,.03)}
+.tk:hover{border-color:#bbb}
+.tk .tt{font-size:14px;word-break:break-word}
+.tk .tm{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:8px}
+.tk .tm .who{margin-left:auto}
+.filterbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.fb{font-size:12.5px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:4px 11px;background:#fff}
+.fb.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.addbtn{font-size:13px;font-weight:700;background:var(--accent);color:#fff;border-radius:8px;padding:7px 12px}
+.lrow{display:flex;gap:10px;align-items:flex-start;padding:11px 14px;border-top:1px solid #f0f0f0;cursor:pointer}
+.lrow:first-child{border-top:0}
+.lrow:hover{background:var(--soft)}
+.lrow .x{flex:1;min-width:0}
+.lrow .x .t{font-size:14px;word-break:break-word}
+.lrow .x .mm{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;font-size:12px;color:var(--mute);align-items:center}
+.chk{flex:none;width:20px;height:20px;border-radius:5px;border:2px solid #c4c4c4;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;margin-top:1px}
+.chk.on{background:var(--ok);border-color:var(--ok)}
+
+/* modal / sheet */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal.on{display:flex}
+.sheet{background:#fff;border-radius:14px;width:100%;max-width:520px;max-height:88dvh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.sheet .sh{padding:16px 18px 6px;display:flex;align-items:center}
+.sheet .sh b{font-size:17px}
+.sheet .sh button{margin-left:auto;font-size:22px;color:var(--mute)}
+.sheet .sb{padding:6px 18px 10px;overflow-y:auto}
+.sheet .sf{padding:10px 18px 16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--line)}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:12.5px;font-weight:700;margin-bottom:4px;color:var(--ink2)}
+.fld textarea,.fld input,.fld select{width:100%;border:1px solid #cfcfcf;border-radius:8px;padding:8px 10px;font-size:14.5px;background:#fff}
+.fld textarea{resize:vertical;min-height:90px}
+.btn{font-size:14px;font-weight:700;border-radius:8px;padding:8px 14px;border:1px solid var(--line);background:#fff}
+.btn.pri{background:#007a5a;color:#fff;border-color:#007a5a}
+.btn.dark{background:var(--pm);color:#fff;border-color:var(--pm)}
+.btn.danger{color:#b91c1c}
+.btn:disabled{opacity:.5}
+.optrow{display:flex;flex-wrap:wrap;gap:6px}
+.nickopts{display:flex;gap:8px}
+.nickopts button{flex:1;padding:14px 0;border-radius:10px;border:1px solid var(--line);font-weight:700;font-size:16px}
+.nickopts button:hover{border-color:var(--accent);background:var(--accent-soft)}
+.actlist button{display:flex;width:100%;padding:12px 4px;border-top:1px solid #f0f0f0;font-size:15px;gap:10px}
+.actlist button:first-child{border-top:0}
+.actlist .danger{color:#b91c1c}
+.emojis{display:flex;gap:6px;padding:4px 0 10px}
+.emojis button{font-size:22px;padding:6px 8px;border-radius:8px;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;font-size:13.5px;padding:9px 16px;border-radius:10px;z-index:60;display:none;max-width:90vw}
+.toast.on{display:block}
+.mitem{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px solid #f0f0f0;font-size:14px}
+.mitem input{margin-top:4px}
+
+/* help */
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 16px}
+.help{font-size:14.5px;color:var(--ink2)}
+.help p{margin:6px 0}
+.help ol,.help ul{padding-left:20px;margin:6px 0}
+.help li{margin:5px 0}
+.help code{background:#f1f1f1;border-radius:4px;padding:0 5px;font-size:13px}
+.ht{width:100%;border-collapse:collapse;margin:8px 0;font-size:13.5px}
+.ht td{border-top:1px solid #f0f0f0;padding:7px 6px;vertical-align:top}
+.ht td:first-child{white-space:nowrap;width:1%;padding-right:12px}
+.help dt{font-weight:700;margin-top:10px}
+.help dd{margin:2px 0 0}
+.note{background:#fff7e0;border-radius:8px;padding:8px 10px;font-size:13px}
+/* hub: 전체 대화 */
+.hub{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border-radius:11px;background:rgba(255,90,31,.14);border:1px solid rgba(255,90,31,.45);color:#fff;text-align:left;margin:2px 0 14px}
+.hub:hover{background:rgba(255,90,31,.24)}
+.hub.on{background:var(--accent);border-color:var(--accent)}
+.hub .hic{width:32px;height:32px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+.hub.on .hic{background:#fff}
+.hub .htx{flex:1;min-width:0}
+.hub .htx b{display:block;font-size:15px;line-height:1.25}
+.hub .htx small{display:block;font-size:11.5px;color:#f6b89e}
+.hub.on .htx small{color:#ffe4d6}
+.hub .cnt{font-size:11px;font-weight:700;background:var(--accent);color:#fff;border-radius:9px;padding:0 6px;line-height:18px}
+.hub.on .cnt{background:#fff;color:var(--accent)}
+.hubintro{display:flex;gap:12px;margin:14px 16px 6px;padding:14px;border-radius:14px;background:var(--accent-soft);border:1px solid #ffd2bf}
+.hubintro .hic{width:44px;height:44px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.hubintro h2{font-size:18px;font-weight:700}
+.hubintro p{font-size:13.5px;color:var(--ink2);margin-top:2px}
+.hubparts{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.hubparts button{font-size:12px;border:1px solid #ffd2bf;background:#fff;border-radius:999px;padding:2px 9px;display:inline-flex;align-items:center;gap:5px}
+.hubparts button:hover{border-color:var(--accent)}
+.cbox.hubbox{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.hubcard{border-color:#ffd2bf}
+.hubcard>h3{background:var(--accent-soft);border-color:#ffd2bf}
+.tbtn.hubbtn{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tbtn.hubbtn:hover{background:#e84d14}
+/* login */
+.login{position:fixed;inset:0;background:var(--side);display:none;align-items:center;justify-content:center;padding:16px;z-index:80;overflow-y:auto}
+.login.on{display:flex}
+.lcard{background:#fff;border-radius:16px;width:100%;max-width:380px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.lcard .ws{padding:0 0 16px;border:0}
+.lcard .ws b{color:var(--ink)}
+.ltabs{display:flex;gap:6px;margin-bottom:14px}
+.ltabs button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--line);font-weight:700;font-size:13.5px}
+.ltabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.lcard .nickopts{margin-bottom:6px}
+.lcard .nickopts button{padding:9px 0;font-size:14px}
+.lcard .nickopts button.on{border-color:var(--accent);background:var(--accent-soft)}
+.lerr{color:#b91c1c;font-size:13px;min-height:18px;margin:4px 0}
+.lbtn{width:100%;padding:11px;border-radius:9px;background:var(--accent);color:#fff;font-weight:700;font-size:15px}
+.lbtn:disabled{opacity:.6}
+.lnote{font-size:12px;color:var(--mute);margin-top:10px;line-height:1.5}
+/* ---------- mobile ---------- */
+@media (max-width:820px){
+  .ht td:first-child{white-space:normal;width:34%}
+  .side{position:fixed;inset:0 auto 0 0;z-index:40;transform:translateX(-100%);transition:transform .2s;width:84vw;max-width:310px}
+  .app.nav .side{transform:none}
+  .app.nav .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:39}
+  .burger{display:block}
+  .thread{position:fixed;inset:0;z-index:30;width:auto;border:0;padding-top:env(safe-area-inset-top)}
+  .hov{display:none!important}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .grid2{grid-template-columns:1fr}
+  .kanban{grid-template-columns:repeat(3,82vw);scroll-snap-type:x mandatory}
+  .col{scroll-snap-align:start}
+  .tbtn .long{display:none}
+  .page{padding:14px 14px 40px}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="scrim" id="scrim"></div>
+  <aside class="side">
+    <div class="ws"><div class="mark">AR</div><div><b>Ad-racer</b><small>업무톡 · 3인 창업팀</small></div></div>
+    <div class="sidescroll" id="sideList"></div>
+    <div class="mebox" id="meBox"></div>
+  </aside>
+  <section class="main">
+    <div class="top">
+      <button class="burger" id="burger" aria-label="메뉴">☰</button>
+      <div class="ttl"><h1 id="ttl"></h1><p id="ttlSub"></p></div>
+      <div id="topActions" style="display:flex;gap:6px"></div>
+    </div>
+    <div id="banner"></div>
+    <div class="body">
+      <div class="pane" id="pane"></div>
+      <aside class="thread" id="thread"></aside>
+    </div>
+  </section>
+</div>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+<div class="login" id="login"><div class="lcard">
+  <div class="ws"><div class="mark">AR</div><div><b>Ad-racer 업무톡</b><small>팀원 전용 · 로그인이 필요해요</small></div></div>
+  <div class="ltabs"><button data-lt="in" class="on">로그인</button><button data-lt="up">처음이에요 (가입)</button></div>
+  <div id="lform"></div>
+</div></div>
+
+<script>
+/* ================= 설정: Apps Script 웹앱 주소 =================
+ * Apps Script에서 [배포 → 웹 앱]으로 받은 주소(…/exec)를 따옴표 안에 붙여넣으세요.
+ */
+const API_URL='https://script.google.com/macros/s/AKfycbyBK6NvaZemht0OkHujcfKc3mXBN-HYOi8tsMxuXaNZpEr9Vce0Rw1CSbgArB187Xk5/exec';
+
+/* ================= constants ================= */
+const PARTS=[
+  {id:'product',name:'서비스·MVP',ch:'서비스-mvp',color:'#3b6cf5',topic:'플랫폼 기능, 랜딩페이지, MVP 개발'},
+  {id:'brand',name:'브랜드 영업',ch:'브랜드-영업',color:'#ff5a1f',topic:'광고주 브랜드 발굴·콜드메일·계약'},
+  {id:'runner',name:'러너·크루',ch:'러너-크루',color:'#16a34a',topic:'대회 참가자·러닝크루 모집, 대회 선정'},
+  {id:'revenue',name:'수익모델·가격',ch:'수익모델-가격',color:'#e11d48',topic:'등록비·수수료·구독·얼리버드'},
+  {id:'naming',name:'브랜딩·상표',ch:'브랜딩-상표',color:'#9333ea',topic:'서비스명·로고·상표 출원·스티커 디자인'},
+  {id:'marketing',name:'마케팅·SNS',ch:'마케팅-sns',color:'#f59e0b',topic:'인스타 계정·콘텐츠·이벤트'},
+  {id:'plan',name:'사업계획·지원',ch:'사업계획-지원',color:'#0891b2',topic:'사업계획서·정부지원사업·전문가 피드백'},
+  {id:'legal',name:'법무·개인정보',ch:'법무-개인정보',color:'#64748b',topic:'사업자·창업 합의·개인정보 처리방침'},
+  {id:'finance',name:'재무·정산',ch:'재무-정산',color:'#0f766e',topic:'공동 비용·정산 시트'}
+];
+const PMAP=Object.fromEntries(PARTS.map(p=>[p.id,p]));
+const KINDS={note:{label:'메시지',icon:'💬'},decision:{label:'결정',icon:'✅'},todo:{label:'할일',icon:'📌'},question:{label:'질문',icon:'❓'},idea:{label:'아이디어',icon:'💡'}};
+const NICKS=['운영','선영','승준'];
+const NCOLOR={'운영':'#ff5a1f','선영':'#9333ea','승준':'#2563eb'};
+const EMOJI=['👍','✅','👀','🔥','🙏','😂'];
+const STATUS={todo:'할 일',doing:'진행 중',done:'완료'};
+const PM_NAME='PM 클로드';
+
+/* ================= state ================= */
+let db=null,user=null,sample=null,me=null,myNick=null,isOwner=false,canWrite=true,ready=false,dbFail=false;
+let msgs=[],byId={},members={},membersLoaded=false,briefing=null;
+const S={view:'home',ch:'all',thread:null,taskFilter:'all',decQ:'',draft:{kind:'note',assignee:'',due:'',extra:[],showParts:false},tdraft:{text:''}};
+let pmBusy={}; // key -> true (channel or thread)
+let token=null,pmEnabled=false;
+let lastSeen={};try{lastSeen=JSON.parse(localStorage.getItem('ar_seen')||'{}')}catch(e){}
+
+/* ================= helpers ================= */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const linkify=s=>esc(s).replace(/(https?:\/\/[^\s<]+)/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u}</a>`).replace(/@PM/g,'<b style="color:#1264a3">@PM</b>');
+const WD=['일','월','화','수','목','금','토'];
+const dkey=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()};
+function dlabel(ts){const d=new Date(ts),n=new Date();if(dkey(ts)===dkey(n))return '오늘';const y=new Date(n-864e5);if(dkey(ts)===dkey(y))return '어제';return `${d.getMonth()+1}월 ${d.getDate()}일 ${WD[d.getDay()]}요일`}
+const hm=ts=>{const d=new Date(ts);const h=d.getHours();return (h<12?'오전 ':'오후 ')+((h%12)||12)+':'+String(d.getMinutes()).padStart(2,'0')};
+const md=ts=>{const d=new Date(ts);return `${d.getMonth()+1}/${d.getDate()}`};
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function dueLabel(due){if(!due)return '';const [y,m,d]=due.split('-').map(Number);const dd=new Date(y,m-1,d);return `${m}/${d}(${WD[dd.getDay()]})`}
+function dueState(m){if(!m.due||status(m)==='done')return '';const t=today();if(m.due<t)return 'over';if(m.due===t)return 'today';return ''}
+const nameOf=m=>m.bot?PM_NAME:((m.uid&&members[m.uid]&&members[m.uid].nick)||m.who||'팀원');
+const isMine=m=>!!(me&&m.uid===me);
+const status=m=>m.status||(m.done?'done':'todo');
+const isOpen=m=>(m.kind==='todo'&&status(m)!=='done')||(m.kind==='question'&&!m.done);
+function avatar(name,sm){
+  if(name===PM_NAME) return `<div class="av ${sm?'sm':''}" style="background:var(--pm)">🤖</div>`;
+  const c=NCOLOR[name]||'#6b7280';return `<div class="av ${sm?'sm':''}" style="background:${c}">${esc((name||'?').slice(0,1))}</div>`;
+}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2600)}
+function banner(t,err){$('banner').innerHTML=t?`<div class="banner ${err?'err':''}">${esc(t)}</div>`:''}
+function saveSeen(){try{localStorage.setItem('ar_seen',JSON.stringify(lastSeen))}catch(e){}}
+
+/* channel membership */
+function inChan(m,c){
+  if(m.replyTo) return false;
+  if(c==='pm') return m.chan==='pm';
+  if(m.chan==='pm') return false;
+  if(c==='all') return true;
+  return (m.parts||[]).includes(c);
+}
+const replies=id=>msgs.filter(m=>m.replyTo===id);
+function unread(c){
+  const seen=lastSeen[c]||0;
+  return msgs.filter(m=>{const root=m.replyTo?byId[m.replyTo]:m;return root&&inChan(root,c)&&m.ts>seen&&!isMine(m)}).length;
+}
+
+/* ================= navigation ================= */
+function go(view,ch){
+  S.view=view; if(ch) S.ch=ch;
+  if(view!=='chan') S.thread=null;
+  const h=view==='chan'?(S.ch==='pm'?'pm':'c-'+S.ch):view;
+  if(location.hash!=='#'+h){try{history.replaceState(null,'','#'+h)}catch(e){}}
+  $('app').classList.remove('nav');
+  renderAll(true);
+}
+function fromHash(){
+  const h=location.hash.slice(1);
+  if(h==='tasks'||h==='decisions'||h==='home'||h==='help') return go(h);
+  if(h==='pm') return go('chan','pm');
+  if(h.startsWith('c-')&&(h.slice(2)==='all'||PMAP[h.slice(2)])) return go('chan',h.slice(2));
+  go('home');
+}
+window.addEventListener('hashchange',fromHash);
+$('burger').onclick=()=>$('app').classList.add('nav');
+$('scrim').onclick=()=>$('app').classList.remove('nav');
+
+/* ================= sidebar ================= */
+function renderSide(){
+  const openN=msgs.filter(m=>m.kind==='todo'&&status(m)!=='done').length;
+  const qN=msgs.filter(m=>m.kind==='question'&&!m.done).length;
+  const item=(on,ic,lbl,attr,cnt,ur)=>`<button class="sitem ${on?'on':''} ${ur?'unread':''}" ${attr}><span class="ic">${ic}</span><span class="lbl">${lbl}</span>${cnt?`<span class="cnt">${cnt}</span>`:''}</button>`;
+  const ua=unread('all');
+  let h=`<button class="hub ${S.view==='chan'&&S.ch==='all'?'on':''}" data-c="all"><span class="hic">🏁</span><span class="htx"><b>전체 대화</b><small>모든 파트가 모이는 메인 채널</small></span>${ua?`<span class="cnt">${ua}</span>`:''}</button>`;
+  h+=`<div class="sgroup">`;
+  h+=item(S.view==='home','🏠','홈 · PM 대시보드','data-v="home"');
+  h+=item(S.view==='tasks','📋','할일 보드','data-v="tasks"',openN||'');
+  h+=item(S.view==='decisions','✅','결정 · 질문','data-v="decisions"',qN||'');
+  h+=item(S.view==='help','📖','사용 매뉴얼','data-v="help"');
+  if(!isStandalone()) h+=item(false,'📲','폰에 앱으로 설치','data-inst="1"');
+  h+=`</div><div class="sgroup"><h5>파트별 채널</h5>`;
+  PARTS.forEach(c=>{const u=unread(c.id);h+=item(S.view==='chan'&&S.ch===c.id,'<span class="hash">#</span>',c.ch,`data-c="${c.id}"`,u||'',u)});
+  h+=`</div><div class="sgroup"><h5>앱</h5>`;
+  const pu=unread('pm');
+  h+=item(S.view==='chan'&&S.ch==='pm','🤖',PM_NAME,'data-c="pm"',pu||'',pu);
+  h+=`</div>`;
+  $('sideList').innerHTML=h;
+  $('sideList').querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>go(b.dataset.v));
+  $('sideList').querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>go('chan',b.dataset.c));
+  $('sideList').querySelectorAll('[data-inst]').forEach(b=>b.onclick=()=>{$('app').classList.remove('nav');openInstall()});
+  $('meBox').innerHTML=myNick?`${avatar(myNick,true)}<span><b style="color:#fff">${esc(myNick)}</b></span><button id="chNick">계정</button>`:`<span style="color:var(--sidemute)">${ready?'로그인 필요':'연결 중…'}</span>`;
+  if($('chNick')) $('chNick').onclick=openAccount;
+}
+
+/* ================= top bar ================= */
+function renderTop(){
+  let t='',s='',a='';
+  if(S.view==='home'){t='🏠 홈';s='PM 클로드가 정리한 팀 현황';a=`<button class="tbtn" id="aMeet">📝 <span class="long">회의록 정리</span><span>회의록</span></button>`}
+  else if(S.view==='tasks'){t='📋 할일 보드';s='할 일 → 진행 중 → 완료';a=`<button class="addbtn" id="aTask">+ 할일</button>`}
+  else if(S.view==='decisions'){t='✅ 결정 · 질문';s='팀이 정한 것과 아직 정해야 할 것'}
+  else if(S.view==='help'){t='📖 사용 매뉴얼';s='업무톡과 PM 클로드 쓰는 법'}
+  else if(S.ch==='pm'){t='🤖 '+PM_NAME;s='프로젝트 매니저 · 물어보면 팀 기록 전체를 보고 답해요'}
+  else if(S.ch==='all'){t='🏁 전체 대화';s='팀의 메인 채널 · 모든 파트의 대화가 모이고, 여기 쓴 글은 모두가 봐요'}
+  else{const p=PMAP[S.ch];t=`<span class="dot" style="background:${p.color};width:10px;height:10px"></span># ${p.ch}`;s=p.topic}
+  if(S.view==='chan'&&S.ch!=='pm'&&sample) a=`<button class="tbtn pm" id="aSum">🤖 <span class="long">PM 채널 정리</span><span>정리</span></button>`;
+  $('ttl').innerHTML=t;$('ttlSub').textContent=s;$('topActions').innerHTML=a;
+  if($('aMeet')) $('aMeet').onclick=openMeeting;
+  if($('aTask')) $('aTask').onclick=()=>openTaskEditor(null);
+  if($('aSum')) $('aSum').onclick=()=>pmSummarizeChannel(S.ch);
+  // shorten long labels: show only one of spans
+  document.querySelectorAll('.tbtn').forEach(b=>{const l=b.querySelector('.long');const s2=l&&l.nextElementSibling;if(l&&s2){s2.style.display=window.innerWidth>820?'none':'inline'}});
+}
+
+/* ================= message rendering ================= */
+function chipsHtml(m,opts={}){
+  let h='';
+  if(m.kind&&m.kind!=='note'){
+    const k=KINDS[m.kind];
+    if(m.kind==='todo'){const st=status(m);const ds=dueState(m);
+      h+=`<span class="kb ${st==='done'?'grey':st==='doing'?'doing':'todo'}">📌 ${STATUS[st]}${m.assignee?' · '+esc(m.assignee):''}</span>`;
+      if(m.due) h+=`<span class="kb ${ds==='over'?'red':ds==='today'?'question':'grey'}">📅 ${dueLabel(m.due)}${ds==='over'?' 지남':ds==='today'?' 오늘':''}</span>`;
+    } else if(m.kind==='question') h+=`<span class="kb ${m.done?'grey':'question'}">❓ ${m.done?'해결됨':'미결 질문'}</span>`;
+    else h+=`<span class="kb ${m.kind}">${k.icon} ${k.label}</span>`;
+  }
+  if(!opts.noParts)(m.parts||[]).forEach(p=>{const P=PMAP[p];if(P)h+=`<span class="tag" style="background:${P.color}">${P.name}</span>`});
+  if(m.src==='kakao') h+=`<span class="src">카톡 이관</span>`;
+  if(m.src==='pm') h+=`<span class="src">PM 제안</span>`;
+  if(m.src==='meeting') h+=`<span class="src">회의록</span>`;
+  return h?`<div class="chips">${h}</div>`:'';
+}
+function msgHtml(m,inThread){
+  const name=nameOf(m),rs=inThread?[]:replies(m.id);
+  const done=(m.kind==='todo'&&status(m)==='done')||(m.kind==='question'&&m.done);
+  let rx='';const R=m.reactions||{};
+  const ks=Object.keys(R).filter(k=>(R[k]||[]).length);
+  if(ks.length) rx=`<div class="reacts">${ks.map(k=>`<button class="rx ${(R[k]||[]).includes(me)?'me':''}" data-rx="${k}" data-id="${m.id}">${k} ${R[k].length}</button>`).join('')}</div>`;
+  let sug='';
+  if(m.suggestions&&m.suggestions.length){
+    sug=`<div class="sugg"><h6>🤖 PM 제안 — 누르면 바로 등록돼요</h6>${m.suggestions.map((s,i)=>`<div class="sg"><span class="kb ${s.kind}">${KINDS[s.kind]?KINDS[s.kind].icon+' '+KINDS[s.kind].label:''}</span><span class="x">${esc(s.text)}${s.assignee?` <small style="color:var(--mute)">· ${esc(s.assignee)}</small>`:''}${s.due?` <small style="color:var(--mute)">· ${dueLabel(s.due)}</small>`:''}</span><button data-sg="${i}" data-id="${m.id}" ${s.added||!canWrite?'disabled':''}>${s.added?'등록됨':'등록'}</button></div>`).join('')}</div>`;
+  }
+  const thr=rs.length?`<button class="thr" data-th="${m.id}"><span style="display:flex">${[...new Set(rs.map(nameOf))].slice(0,3).map(n=>avatar(n,true)).join('')}</span>답글 ${rs.length}개 <span class="last">${hm(rs[rs.length-1].ts)}</span></button>`:'';
+  return `<div class="m ${S.selMsg===m.id?'sel':''}" data-mid="${m.id}">
+    ${avatar(name)}
+    <div class="mb">
+      <div class="mh"><b>${esc(name)}</b>${m.bot?'<span class="appb">앱</span>':''}<span class="t">${hm(m.ts)}</span></div>
+      <div class="mt ${done?'done':''}">${linkify(m.text)}</div>
+      ${chipsHtml(m,{noParts:S.view==='chan'&&S.ch!=='all'&&S.ch!=='pm'&&(m.parts||[]).length===1})}
+      ${sug}${rx}${thr}
+    </div>
+    <div class="hov">
+      <button data-q="👍" data-id="${m.id}" title="좋아요">👍</button>
+      <button data-q="✅" data-id="${m.id}" title="확인">✅</button>
+      ${inThread?'':`<button data-th="${m.id}" title="스레드에서 답글">💬</button>`}
+      <button data-more="${m.id}" title="더보기">⋯</button>
+    </div>
+  </div>`;
+}
+function bindMsgs(root){
+  root.querySelectorAll('[data-c2]').forEach(b=>b.onclick=()=>go('chan',b.dataset.c2));
+  root.querySelectorAll('[data-th]').forEach(b=>b.onclick=e=>{e.stopPropagation();openThread(b.dataset.th)});
+  root.querySelectorAll('[data-rx],[data-q]').forEach(b=>b.onclick=e=>{e.stopPropagation();toggleReact(b.dataset.id,b.dataset.rx||b.dataset.q)});
+  root.querySelectorAll('[data-more]').forEach(b=>b.onclick=e=>{e.stopPropagation();openActions(b.dataset.more)});
+  root.querySelectorAll('[data-sg]').forEach(b=>b.onclick=e=>{e.stopPropagation();addSuggestion(b.dataset.id,+b.dataset.sg,b)});
+  // mobile: tap on message body opens action sheet
+  root.querySelectorAll('.m').forEach(el=>el.onclick=e=>{
+    if(e.target.closest('a,button')) return;
+    if(window.matchMedia('(max-width:820px)').matches) openActions(el.dataset.mid);
+  });
+}
+
+/* ================= channel view ================= */
+const compStamp=()=>`${!!db}|${canWrite}|${!!sample}|${dbFail}`;
+function renderChannel(scroll){
+  const c=S.ch,key='chan:'+c,pane=$('pane');
+  if(pane.dataset.k===key&&$('feedInner')){
+    $('feedInner').innerHTML=feedHtml(c);bindMsgs($('feedInner'));
+    const host=$('compMain');if(host&&host.dataset.s!==compStamp())renderComposer('compMain',{chan:c});
+  }else{
+    pane.innerHTML=`<div class="scroll" id="feedScroll"><div class="feed" id="feedInner">${feedHtml(c)}</div></div><div id="compMain"></div>`;
+    pane.dataset.k=key;bindMsgs($('feedInner'));renderComposer('compMain',{chan:c});
+  }
+  lastSeen[c]=Date.now();saveSeen();
+  if(scroll){const s=$('feedScroll');s.scrollTop=s.scrollHeight}
+}
+function feedHtml(c){
+  const list=msgs.filter(m=>inChan(m,c));
+  let h='';
+  if(c==='pm'){
+    h+=`<div class="intro"><h2>🤖 ${PM_NAME}</h2><p>팀의 프로젝트 매니저예요. 업무톡에 쌓인 모든 대화·결정·할일을 읽고 답해요.<br>예) “이번 주 우선순위 뭐야?”, “11/14 하이록스 전에 뭐 준비해야 해?”, “가격 정책 정리해줘”<br>다른 채널에서도 <b>@PM</b>을 붙이면 스레드로 답해요.</p></div>`;
+  } else if(c==='all'){
+    h+=`<div class="hubintro"><div class="hic">🏁</div><div><h2>전체 대화</h2><p>Ad-racer 팀의 메인 채널이에요. ${PARTS.length}개 파트 채널의 글이 모두 여기 모이고, 여기 쓴 글은 팀 모두가 봐요.${list.length?'':' 첫 메시지를 남겨보세요!'}</p><div class="hubparts">${PARTS.map(p=>`<button data-c2="${p.id}"><span class="dot" style="background:${p.color}"></span>${p.name}</button>`).join('')}</div></div></div>`;
+  } else if(!list.length){
+    h+=`<div class="intro"><h2># ${PMAP[c].ch}</h2><p>${esc(PMAP[c].topic)} 이야기를 나누는 채널이에요.</p></div>`;
+  }
+  let last='';
+  list.forEach(m=>{const k=dkey(m.ts);if(k!==last){h+=`<div class="divider"><span>${dlabel(m.ts)}</span></div>`;last=k}h+=msgHtml(m,false)});
+  if(pmBusy['ch:'+c]) h+=`<div class="typing">${avatar(PM_NAME,true)} ${PM_NAME}가 정리 중 <span class="dots"><span></span><span></span><span></span></span></div>`;
+  return h;
+}
+
+/* ================= thread ================= */
+function openThread(id){S.thread=id;S.selMsg=null;renderThread(true)}
+function renderThread(scroll){
+  const el=$('thread');
+  const root=S.thread&&byId[S.thread];
+  if(!root||S.view!=='chan'){el.classList.remove('on');el.innerHTML='';el.dataset.k='';return}
+  const rs=replies(root.id);
+  let inner=`<div class="troot">${msgHtml(root,true)}</div>`;
+  if(rs.length) inner+=`<div class="rcount">답글 ${rs.length}개</div>`;
+  rs.forEach(m=>inner+=msgHtml(m,true));
+  if(pmBusy['th:'+root.id]) inner+=`<div class="typing">${avatar(PM_NAME,true)} ${PM_NAME}가 생각 중 <span class="dots"><span></span><span></span><span></span></span></div>`;
+  const key='th:'+root.id,ctx={chan:root.chan==='pm'?'pm':null,rootId:root.id};
+  if(el.dataset.k===key&&$('thScroll')){
+    $('thScroll').innerHTML=inner;bindMsgs($('thScroll'));
+    const host=$('compThread');if(host&&host.dataset.s!==compStamp())renderComposer('compThread',ctx);
+  }else{
+    const where=root.chan==='pm'?PM_NAME:(root.parts&&root.parts[0]&&PMAP[root.parts[0]]?'#'+PMAP[root.parts[0]].ch:'🏁 전체 대화');
+    el.innerHTML=`<div class="thead"><b>스레드</b><small>${esc(where)}</small>${sample?`<button class="tbtn pm" id="thPm" style="margin-left:auto">🤖 PM 정리</button>`:''}<button class="x" id="thX" ${sample?'style="margin-left:4px"':''}>✕</button></div><div class="scroll" id="thScroll">${inner}</div><div id="compThread"></div>`;
+    el.dataset.k=key;el.classList.add('on');
+    bindMsgs($('thScroll'));
+    $('thX').onclick=()=>{S.thread=null;renderThread()};
+    if($('thPm')) $('thPm').onclick=()=>askPM({question:'이 스레드 내용을 정리하고, 결정된 것/남은 할일/정해야 할 질문을 뽑아줘.',rootId:root.id});
+    renderComposer('compThread',ctx);
+    scroll=true;
+  }
+  if(scroll){const s=$('thScroll');s.scrollTop=s.scrollHeight}
+}
+
+/* ================= composer ================= */
+const drafts={};
+function renderComposer(hostId,ctx){
+  const host=$(hostId);if(!host)return;
+  if(!db||!canWrite){host.innerHTML=`<div class="ro">${dbFail?'저장소에 연결되지 않았어요.':'로그인하면 글을 쓸 수 있어요.'}</div>`;return}
+  const key=ctx.rootId?'t:'+ctx.rootId:'c:'+ctx.chan;
+  const d=drafts[key]||(drafts[key]={text:'',kind:'note',assignee:'',due:'',extra:[],showParts:false});
+  const isThread=!!ctx.rootId, isPM=ctx.chan==='pm';
+  const ph=isPM?`${PM_NAME}에게 물어보기`:isThread?'답글 달기… (@PM 으로 PM 호출)':(ctx.chan==='all'?'🏁 전체 대화에 메시지 보내기 · 팀 모두가 봐요':`#${PMAP[ctx.chan].ch}에 메시지 보내기`);
+  let h=`<div class="comp"><div class="cbox ${ctx.chan==='all'&&!isThread?'hubbox':''}"><textarea rows="1" id="ta-${hostId}" placeholder="${esc(ph)}">${esc(d.text)}</textarea>`;
+  if(d.showParts&&!isPM){
+    h+=`<div class="ptray">${PARTS.map(p=>{const fixed=ctx.chan===p.id;const on=fixed||d.extra.includes(p.id);return `<button class="chip ${on?'on':''}" data-pp="${p.id}" ${fixed?'disabled':''}><span class="dot" style="background:${p.color}"></span>${p.name}</button>`}).join('')}</div>`;
+  }
+  h+=`<div class="ctool">`;
+  if(!isPM){
+    h+=`<select class="pill" data-k>${Object.entries(KINDS).map(([k,v])=>`<option value="${k}" ${d.kind===k?'selected':''}>${v.icon} ${v.label}</option>`).join('')}</select>`;
+    if(d.kind==='todo'){
+      h+=`<select class="pill" data-as><option value="">담당자</option>${[...NICKS,'다같이'].map(n=>`<option ${d.assignee===n?'selected':''}>${n}</option>`).join('')}</select>`;
+      h+=`<input type="date" class="pill" data-due value="${esc(d.due)}">`;
+    }
+    const pc=(ctx.chan&&ctx.chan!=='all'?1:0)+d.extra.length;
+    h+=`<button class="pill ${d.showParts?'on':''}" data-tp>🏷 파트${pc?' '+pc:''}</button>`;
+    if(sample) h+=`<button class="pill" data-at title="PM 호출">🤖 @PM</button>`;
+  }
+  h+=`<span class="sp"></span><button class="sendb ${d.text.trim()?'ready':''}" data-send aria-label="보내기">➤</button></div></div>`;
+  if(!isPM&&!isThread&&ctx.chan==='all'&&!d.extra.length) h+=`<div class="chint">🏷 파트를 고르면 해당 채널과 사업 지도에도 기록돼요</div>`;
+  h+=`</div>`;
+  host.innerHTML=h;
+  const ta=$('ta-'+hostId);
+  const auto=()=>{ta.style.height='auto';ta.style.height=Math.min(160,ta.scrollHeight)+'px'};auto();
+  ta.oninput=()=>{d.text=ta.value;auto();host.querySelector('[data-send]').classList.toggle('ready',!!ta.value.trim())};
+  ta.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&window.matchMedia('(pointer:fine)').matches){e.preventDefault();send(ctx,d,hostId)}};
+  const q=s=>host.querySelector(s);
+  if(q('[data-k]')) q('[data-k]').onchange=e=>{d.kind=e.target.value;renderComposer(hostId,ctx);$('ta-'+hostId).focus()};
+  if(q('[data-as]')) q('[data-as]').onchange=e=>d.assignee=e.target.value;
+  if(q('[data-due]')) q('[data-due]').onchange=e=>d.due=e.target.value;
+  if(q('[data-tp]')) q('[data-tp]').onclick=()=>{d.showParts=!d.showParts;renderComposer(hostId,ctx)};
+  if(q('[data-at]')) q('[data-at]').onclick=()=>{if(!/@PM/.test(d.text)){d.text=('@PM '+d.text).trimEnd()+' '}renderComposer(hostId,ctx);const t=$('ta-'+hostId);t.focus();t.setSelectionRange(t.value.length,t.value.length)};
+  host.querySelectorAll('[data-pp]').forEach(b=>b.onclick=()=>{const p=b.dataset.pp,i=d.extra.indexOf(p);if(i>=0)d.extra.splice(i,1);else if(d.extra.length<3)d.extra.push(p);renderComposer(hostId,ctx)});
+  q('[data-send]').onclick=()=>send(ctx,d,hostId);
+  host.dataset.s=compStamp();
+}
+let sending=false;
+async function send(ctx,d,hostId){
+  const text=d.text.trim();if(!text||sending)return;
+  if(!myNick){openNick();return}
+  sending=true;
+  const root=ctx.rootId?byId[ctx.rootId]:null;
+  let parts=root?(root.parts||[]).slice():[];
+  if(!root){if(ctx.chan&&ctx.chan!=='all'&&ctx.chan!=='pm')parts.push(ctx.chan);d.extra.forEach(p=>{if(!parts.includes(p))parts.push(p)})}
+  const doc={text,parts,kind:ctx.chan==='pm'?'note':d.kind,uid:me,ts:Date.now(),done:false};
+  if(root) doc.replyTo=root.id;
+  if((root&&root.chan==='pm')||ctx.chan==='pm') doc.chan='pm';
+  if(doc.kind==='todo'){doc.status='todo';if(d.assignee)doc.assignee=d.assignee;if(d.due)doc.due=d.due}
+  try{
+    const ref=await db.collection('msgs').add(doc);
+    Object.assign(d,{text:'',kind:'note',assignee:'',due:'',extra:[],showParts:false});
+    renderComposer(hostId,ctx);
+    const wantsPM=ctx.chan==='pm'||/@pm/i.test(text);
+    if(wantsPM&&sample){
+      if(ctx.chan==='pm'&&!root) askPM({question:text,chan:'pm'});
+      else{if(!root)S.thread=ref.id;askPM({question:text,rootId:root?root.id:ref.id,rootObj:root||Object.assign({id:ref.id},doc)})}
+    }
+  }catch(e){fail(e)}
+  sending=false;
+  renderAll();
+  const s=root?$('thScroll'):$('feedScroll');if(s)s.scrollTop=s.scrollHeight;
+}
+function fail(e){
+  const c=e&&e.code;
+  if(c==='unauthenticated'){logout(e.message);return}
+  if(c==='busy'||c==='rate_limited') toast('잠시 후 다시 시도해 주세요.');
+  else toast((e&&e.message)||'저장하지 못했어요. 잠시 후 다시 시도해 주세요.');
+}
+async function upd(id,patch){try{await db.doc('msgs/'+id).update(patch)}catch(e){fail(e)}}
+async function toggleReact(id,emo){
+  if(!canWrite||!me){return}
+  const m=byId[id];if(!m)return;
+  const R=JSON.parse(JSON.stringify(m.reactions||{}));
+  const arr=R[emo]||[];const i=arr.indexOf(me);if(i>=0)arr.splice(i,1);else arr.push(me);
+  R[emo]=arr;
+  try{await db.doc('msgs/'+id).update({reactions:R})}catch(e){fail(e)}
+}
+
+/* ================= action sheet ================= */
+function openActions(id){
+  const m=byId[id];if(!m)return;
+  const canDel=isMine(m)||isOwner||m.bot||!!m.src;
+  let b=`<div class="emojis">${EMOJI.map(e=>`<button data-e="${e}">${e}</button>`).join('')}</div><div class="actlist">`;
+  if(!m.replyTo) b+=`<button data-a="thread">💬 스레드에서 답글</button>`;
+  if(sample) b+=`<button data-a="pm">🤖 PM에게 이 메시지 물어보기</button>`;
+  if(m.kind==='todo') b+=`<button data-a="task">📌 할일 편집 (상태·담당·마감)</button>`;
+  if(m.kind==='question') b+=`<button data-a="qdone">${m.done?'↩ 질문 다시 열기':'✔ 질문 해결됨으로'}</button>`;
+  b+=`<button data-a="kind">🏷 종류·파트 바꾸기</button>`;
+  b+=`<button data-a="copy">📋 텍스트 복사</button>`;
+  if(isMine(m)) b+=`<button data-a="edit">✏️ 수정</button>`;
+  if(canDel) b+=`<button data-a="del" class="danger">🗑 삭제</button>`;
+  b+=`</div>`;
+  openModal({title:'메시지',body:b,noFoot:true});
+  const sh=$('sheet');
+  if(!canWrite) sh.querySelectorAll('[data-e],[data-a="qdone"],[data-a="kind"],[data-a="edit"],[data-a="del"],[data-a="task"]').forEach(x=>x.disabled=true);
+  sh.querySelectorAll('[data-e]').forEach(x=>x.onclick=()=>{closeModal();toggleReact(id,x.dataset.e)});
+  sh.querySelectorAll('[data-a]').forEach(x=>x.onclick=async()=>{
+    const a=x.dataset.a;
+    if(a==='thread'){closeModal();if(S.view!=='chan'){S.view='chan';S.ch=(m.chan==='pm')?'pm':((m.parts||[])[0]||'all')}openThread(id);renderAll()}
+    if(a==='pm'){closeModal();askPM({question:'이 메시지에 대해 PM 관점에서 의견을 주고, 필요한 후속 조치를 제안해줘.',rootId:m.replyTo||id})}
+    if(a==='task'){closeModal();openTaskEditor(id)}
+    if(a==='qdone'){closeModal();upd(id,{done:!m.done})}
+    if(a==='kind'){openKindEditor(id)}
+    if(a==='copy'){try{await navigator.clipboard.writeText(m.text);toast('복사했어요')}catch(e){toast('복사할 수 없어요')}closeModal()}
+    if(a==='edit'){openEdit(id)}
+    if(a==='del'){if(x.dataset.c){closeModal();try{await db.doc('msgs/'+id).delete();if(S.thread===id)S.thread=null}catch(e){fail(e)}}else{x.dataset.c=1;x.textContent='🗑 한 번 더 누르면 삭제'}}
+  });
+}
+function openEdit(id){
+  const m=byId[id];
+  openModal({title:'메시지 수정',body:`<div class="fld"><textarea id="edT">${esc(m.text)}</textarea></div>`,ok:'저장',onOk:async()=>{const v=$('edT').value.trim();if(!v)return;closeModal();upd(id,{text:v,edited:true})}});
+}
+function openKindEditor(id){
+  const m=byId[id];let kind=m.kind||'note',parts=(m.parts||[]).slice();
+  const draw=()=>{
+    $('kdK').innerHTML=Object.entries(KINDS).map(([k,v])=>`<button class="fb ${kind===k?'on':''}" data-k="${k}">${v.icon} ${v.label}</button>`).join('');
+    $('kdP').innerHTML=PARTS.map(p=>`<button class="fb ${parts.includes(p.id)?'on':''}" data-p="${p.id}"><span class="dot" style="background:${p.color}"></span> ${p.name}</button>`).join('');
+    $('kdK').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{kind=b.dataset.k;draw()});
+    $('kdP').querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{const p=b.dataset.p,i=parts.indexOf(p);if(i>=0)parts.splice(i,1);else if(parts.length<3)parts.push(p);draw()});
+  };
+  openModal({title:'종류 · 파트',body:`<div class="fld"><label>종류</label><div class="optrow" id="kdK"></div></div><div class="fld"><label>파트 (최대 3개)</label><div class="optrow" id="kdP"></div></div>`,ok:'저장',onOk:()=>{closeModal();const p={kind,parts};if(kind==='todo'&&!m.status)p.status='todo';upd(id,p)}});
+  draw();
+}
+
+/* ================= modal ================= */
+let modalOk=null;
+function openModal({title,body,ok,onOk,noFoot,okClass}){
+  modalOk=onOk||null;
+  $('sheet').innerHTML=`<div class="sh"><b>${title}</b><button id="mX">×</button></div><div class="sb">${body}</div>${noFoot?'':`<div class="sf"><button class="btn" id="mC">취소</button><button class="btn ${okClass||'pri'}" id="mOk">${ok||'확인'}</button></div>`}`;
+  $('modal').classList.add('on');
+  $('mX').onclick=closeModal;if($('mC'))$('mC').onclick=closeModal;
+  if($('mOk'))$('mOk').onclick=()=>modalOk&&modalOk();
+}
+function closeModal(){$('modal').classList.remove('on');$('sheet').innerHTML=''}
+$('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
+
+/* ================= nickname ================= */
+function openNick(){
+  if(!db||!canWrite||!me)return;
+  openModal({title:'✏️ 이름 변경',body:`<p style="font-size:13px;color:var(--mute);margin-bottom:12px">대화에 표시되고, 로그인할 때 쓰는 이름이에요.</p><div class="nickopts">${NICKS.map(n=>`<button data-n="${n}">${n}</button>`).join('')}</div><div class="fld" style="margin-top:12px"><input id="nkI" maxlength="12" placeholder="다른 이름 직접 입력"></div>`,ok:'저장',onOk:()=>{const v=$('nkI').value.trim();if(v)saveNick(v)}});
+  $('sheet').querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>saveNick(b.dataset.n));
+}
+async function saveNick(n){const first=!myNick;try{await db.doc('members/'+me).set({nick:n.slice(0,12)});myNick=n;closeModal();if(first){go('help');toast('처음이시군요! 매뉴얼부터 보여드릴게요')}else renderAll()}catch(e){closeModal();fail(e)}}
+
+function openAccount(){
+  if(!token)return;
+  openModal({title:'내 계정 · '+esc(myNick||''),body:`<div class="actlist"><button data-ac="nick">✏️ 이름 변경</button><button data-ac="pw">🔑 비밀번호 변경</button><button data-ac="out" class="danger">🚪 로그아웃</button></div>`,noFoot:true});
+  $('sheet').querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>{const a=b.dataset.ac;if(a==='nick')openNick();if(a==='pw')openPw();if(a==='out')logout()});
+}
+function openPw(){
+  openModal({title:'🔑 비밀번호 변경',body:`<div class="fld"><label>지금 비밀번호</label><input type="password" id="pwO" autocomplete="current-password"></div><div class="fld"><label>새 비밀번호 (8자 이상)</label><input type="password" id="pwN" autocomplete="new-password"></div><div class="fld"><label>새 비밀번호 확인</label><input type="password" id="pwN2" autocomplete="new-password"></div><div id="pwMsg" class="lerr"></div>`,ok:'변경',onOk:async()=>{
+    const o=$('pwO').value,n=$('pwN').value,m=t=>{$('pwMsg').textContent=t};
+    if(n.length<8)return m('새 비밀번호는 8자 이상이어야 해요.');
+    if(n!==$('pwN2').value)return m('새 비밀번호 확인이 맞지 않아요.');
+    const b=$('mOk');b.disabled=true;
+    try{await gs('api_changePassword',token,o,n);closeModal();toast('비밀번호를 바꿨어요. 다른 기기에서는 로그아웃됐어요')}
+    catch(e){b.disabled=false;m(e.message||'바꾸지 못했어요.')}
+  }});
+}
+
+/* ================= tasks ================= */
+function renderTasks(){
+  const f=S.taskFilter;
+  let T=msgs.filter(m=>m.kind==='todo');
+  if(f==='mine') T=T.filter(m=>m.assignee===myNick||m.assignee==='다같이');
+  else if(NICKS.includes(f)||f==='다같이') T=T.filter(m=>m.assignee===f);
+  else if(PMAP[f]) T=T.filter(m=>(m.parts||[]).includes(f));
+  const sortT=(a,b)=>(a.due||'9999').localeCompare(b.due||'9999')||a.ts-b.ts;
+  let h=`<div class="scroll"><div class="page">`;
+  h+=`<div class="filterbar">${[['all','전체'],['mine','내 할일'],...NICKS.map(n=>[n,n]),['다같이','다같이']].map(([k,l])=>`<button class="fb ${f===k?'on':''}" data-f="${k}">${l}</button>`).join('')}<select class="fb" id="tfP"><option value="">파트별…</option>${PARTS.map(p=>`<option value="${p.id}" ${f===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>`;
+  h+=`<div class="kanban">`;
+  ['todo','doing','done'].forEach(st=>{
+    const L=T.filter(m=>status(m)===st).sort(st==='done'?(a,b)=>b.ts-a.ts:sortT);
+    h+=`<div class="col"><h4>${st==='todo'?'⚪':st==='doing'?'🟣':'🟢'} ${STATUS[st]} <span class="n">${L.length}</span></h4>`;
+    L.forEach(m=>{const ds=dueState(m);
+      h+=`<div class="tk" data-tk="${m.id}"><div class="tt">${esc(m.text)}</div><div class="tm">${m.due?`<span class="kb ${ds==='over'?'red':ds==='today'?'question':'grey'}">📅 ${dueLabel(m.due)}</span>`:''}${(m.parts||[]).slice(0,2).map(p=>PMAP[p]?`<span class="tag" style="background:${PMAP[p].color}">${PMAP[p].name}</span>`:'').join('')}${m.src==='pm'?'<span class="src">PM</span>':''}<span class="who">${m.assignee?avatar(m.assignee==='다같이'?'다':m.assignee,true):''}</span></div></div>`});
+    if(!L.length) h+=`<div style="font-size:12.5px;color:var(--mute);padding:6px">비어 있어요</div>`;
+    h+=`</div>`;
+  });
+  h+=`</div></div></div>`;
+  $('pane').innerHTML=h;
+  $('pane').querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{S.taskFilter=b.dataset.f;renderTasks()});
+  $('tfP').onchange=e=>{S.taskFilter=e.target.value||'all';renderTasks()};
+  $('pane').querySelectorAll('[data-tk]').forEach(c=>c.onclick=()=>openTaskEditor(c.dataset.tk));
+}
+function openTaskEditor(id){
+  const m=id?byId[id]:null;
+  const st=m?status(m):'todo';
+  const body=`
+    <div class="fld"><label>할일</label><textarea id="teT" placeholder="무엇을 해야 하나요?">${esc(m?m.text:'')}</textarea></div>
+    <div class="fld"><label>상태</label><select id="teS">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${st===k?'selected':''}>${v}</option>`).join('')}</select></div>
+    <div class="grid2" style="gap:10px"><div class="fld"><label>담당</label><select id="teA"><option value="">미정</option>${[...NICKS,'다같이'].map(n=>`<option ${m&&m.assignee===n?'selected':''}>${n}</option>`).join('')}</select></div>
+    <div class="fld"><label>마감일</label><input type="date" id="teD" value="${esc(m&&m.due||'')}"></div></div>
+    <div class="fld"><label>파트</label><select id="teP"><option value="">없음</option>${PARTS.map(p=>`<option value="${p.id}" ${m&&(m.parts||[])[0]===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>
+    ${m?`<div style="font-size:12px;color:var(--mute)">${esc(nameOf(m))} · ${md(m.ts)} 등록 · <button id="teTh" style="color:#1264a3;font-size:12px">스레드 열기 (${replies(m.id).length})</button></div>`:''}`;
+  openModal({title:m?'할일 편집':'새 할일',body,ok:m?'저장':'추가',onOk:async()=>{
+    if(!canWrite){toast('보기 전용이에요');return}
+    const text=$('teT').value.trim();if(!text)return;
+    const p=$('teP').value;const patch={text,status:$('teS').value,done:$('teS').value==='done',assignee:$('teA').value,due:$('teD').value};
+    closeModal();
+    if(m){const parts=(m.parts||[]).slice();if(p&&parts[0]!==p){const i=parts.indexOf(p);if(i>=0)parts.splice(i,1);parts.unshift(p)}patch.parts=parts.slice(0,3);upd(m.id,patch)}
+    else{if(!myNick){openNick();return}try{await db.collection('msgs').add({...patch,kind:'todo',parts:p?[p]:[],uid:me,ts:Date.now()})}catch(e){fail(e)}}
+  }});
+  if($('teTh')) $('teTh').onclick=()=>{closeModal();S.view='chan';S.ch=(m.parts||[])[0]||'all';S.thread=m.id;renderAll(true)};
+}
+
+/* ================= decisions ================= */
+function renderDecisions(){
+  const q=S.decQ.toLowerCase();
+  const match=m=>!q||m.text.toLowerCase().includes(q);
+  const Q=msgs.filter(m=>m.kind==='question'&&!m.done&&match(m)).sort((a,b)=>b.ts-a.ts);
+  const D=msgs.filter(m=>m.kind==='decision'&&match(m)).sort((a,b)=>b.ts-a.ts);
+  const I=msgs.filter(m=>m.kind==='idea'&&match(m)).sort((a,b)=>b.ts-a.ts);
+  const Qd=msgs.filter(m=>m.kind==='question'&&m.done&&match(m));
+  const row=(m,chk)=>`<div class="lrow" data-open="${m.id}">${chk?`<button class="chk ${m.done?'on':''}" data-qd="${m.id}">${m.done?'✓':''}</button>`:avatar(nameOf(m),true)}<div class="x"><div class="t">${linkify(m.text)}</div><div class="mm">${(m.parts||[]).map(p=>PMAP[p]?`<span class="tag" style="background:${PMAP[p].color}">${PMAP[p].name}</span>`:'').join('')}<span>${esc(nameOf(m))} · ${md(m.ts)}</span>${replies(m.id).length?`<span>💬 ${replies(m.id).length}</span>`:''}</div></div></div>`;
+  let h=`<div class="scroll"><div class="page"><div class="fld" style="max-width:420px"><input id="dq" placeholder="🔍 결정·질문 검색" value="${esc(S.decQ)}"></div>`;
+  h+=`<div class="card"><h3>❓ 정해야 할 질문 <span style="color:var(--mute);font-weight:500">${Q.length}</span></h3><div>${Q.length?Q.map(m=>row(m,true)).join(''):'<div class="empty" style="padding:18px">열린 질문이 없어요 🎉</div>'}</div></div>`;
+  h+=`<div class="card"><h3>✅ 결정 로그 <span style="color:var(--mute);font-weight:500">${D.length}</span></h3><div>${D.length?D.map(m=>row(m)).join(''):'<div class="empty" style="padding:18px">아직 결정이 없어요. 메시지 ⋯ → 종류 바꾸기로 “결정” 표시할 수 있어요.</div>'}</div></div>`;
+  if(I.length) h+=`<div class="card"><h3>💡 아이디어 보관함 <span style="color:var(--mute);font-weight:500">${I.length}</span></h3><div>${I.map(m=>row(m)).join('')}</div></div>`;
+  if(Qd.length) h+=`<div class="card"><h3>☑️ 해결된 질문 <span style="color:var(--mute);font-weight:500">${Qd.length}</span></h3><div>${Qd.map(m=>row(m,true)).join('')}</div></div>`;
+  h+=`</div></div>`;
+  $('pane').innerHTML=h;
+  const dq=$('dq');dq.oninput=()=>{S.decQ=dq.value;const pos=dq.selectionStart;renderDecisions();const n=$('dq');n.focus();n.setSelectionRange(pos,pos)};
+  $('pane').querySelectorAll('[data-qd]').forEach(b=>b.onclick=e=>{e.stopPropagation();if(canWrite)upd(b.dataset.qd,{done:!byId[b.dataset.qd].done})});
+  $('pane').querySelectorAll('[data-open]').forEach(r=>r.onclick=()=>{const m=byId[r.dataset.open];S.view='chan';S.ch=m.chan==='pm'?'pm':((m.parts||[])[0]||'all');S.thread=m.id;renderAll(true)});
+}
+
+/* ================= home / PM dashboard ================= */
+function partStats(){
+  const st={};PARTS.forEach(p=>st[p.id]={n:0,dec:0,todo:0,q:0,last:0,links:{}});
+  msgs.forEach(m=>{if(m.chan==='pm'||m.bot)return;const ps=(m.parts||[]).filter(p=>st[p]);ps.forEach(p=>{const s=st[p];s.n++;s.last=Math.max(s.last,m.ts);if(m.kind==='decision')s.dec++;if(m.kind==='todo'&&status(m)!=='done')s.todo++;if(m.kind==='question'&&!m.done)s.q++;ps.forEach(o=>{if(o!==p)s.links[o]=(s.links[o]||0)+1})})});
+  return st;
+}
+function mapSvg(){
+  const st=partStats(),cx=200,cy=200,R=125,N=PARTS.length;
+  const max=Math.max(1,...PARTS.map(p=>st[p.id].n));const pos={};
+  PARTS.forEach((p,i)=>{const a=-Math.PI/2+i*2*Math.PI/N;pos[p.id]={x:cx+R*Math.cos(a),y:cy+R*Math.sin(a),a}});
+  let h='';
+  PARTS.forEach(p=>{const q=pos[p.id];h+=`<line x1="${cx}" y1="${cy}" x2="${q.x}" y2="${q.y}" stroke="#30333a"/>`});
+  const seen={};
+  PARTS.forEach(p=>Object.entries(st[p.id].links).forEach(([o,w])=>{const k=[p.id,o].sort().join('|');if(seen[k])return;seen[k]=1;const A=pos[p.id],B=pos[o];const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;h+=`<path d="M${A.x},${A.y} Q${mx+(cx-mx)*.45},${my+(cy-my)*.45} ${B.x},${B.y}" fill="none" stroke="#ff5a1f" stroke-opacity="${Math.min(.85,.25+w*.1)}" stroke-width="${Math.min(7,1+w*.9)}" stroke-linecap="round"/>`}));
+  const total=msgs.filter(m=>m.chan!=='pm'&&!m.bot).length;
+  h+=`<circle cx="${cx}" cy="${cy}" r="30" fill="#ff5a1f"/><text x="${cx}" y="${cy-2}" text-anchor="middle" fill="#fff" font-family="Archivo Black" font-size="11">AD·RACER</text><text x="${cx}" y="${cy+12}" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">${total}건</text>`;
+  PARTS.forEach(p=>{const s=st[p.id],q=pos[p.id],r=12+16*Math.sqrt(s.n/max);
+    h+=`<g class="node" data-p="${p.id}"><circle cx="${q.x}" cy="${q.y}" r="${r}" fill="${p.color}" fill-opacity="${s.n?1:.35}" stroke="#1b1d22" stroke-width="2"/><text x="${q.x}" y="${q.y+4}" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">${s.n}</text>`;
+    const lx=cx+(R+r+14)*Math.cos(q.a),ly=cy+(R+r+14)*Math.sin(q.a);const an=Math.abs(Math.cos(q.a))<.25?'middle':(Math.cos(q.a)>0?'start':'end');const dy=Math.sin(q.a)>.5?8:(Math.sin(q.a)<-.5?-4:2);
+    h+=`<text x="${lx}" y="${ly+dy}" text-anchor="${an}" fill="#eee" font-size="11.5" font-weight="600">${p.name}</text>`;
+    const mk=[s.dec?`<tspan fill="#4ade80">●${s.dec}</tspan>`:'',s.todo?`<tspan fill="#60a5fa"> ●${s.todo}</tspan>`:'',s.q?`<tspan fill="#fb923c"> ●${s.q}</tspan>`:''].join('');
+    if(mk)h+=`<text x="${lx}" y="${ly+dy+13}" text-anchor="${an}" font-size="10" font-weight="700">${mk}</text>`;
+    h+=`</g>`});
+  return `<svg viewBox="0 0 400 400" role="img" aria-label="파트별 논의 지도">${h}</svg>`;
+}
+function briefingHtml(){
+  if(pmBusy.brief) return `<div class="typing" style="padding:4px 0">${PM_NAME}가 팀 기록 전체를 읽고 있어요 <span class="dots"><span></span><span></span><span></span></span></div><div class="pmout" id="briefStream" style="font-size:12px;color:var(--mute);max-height:80px;overflow:hidden"></div>`;
+  if(!briefing||!briefing.data) return `<div class="pmout">아직 브리핑이 없어요. <b>“브리핑 받기”</b>를 누르면 PM 클로드가 지금까지의 대화·결정·할일을 읽고 이번 주 우선순위, 정해야 할 것, 리스크, 다음 회의 안건을 정리해요.<br><small style="color:var(--mute)">결과는 팀 모두에게 공유돼요.</small></div>`;
+  const b=briefing.data;const sc={good:'🟢',watch:'🟡',risk:'🔴'};
+  let h=`<div class="headline">${esc(b.headline||'')}</div>`;
+  if(b.health&&b.health.length) h+=`<div class="pmsec">파트별 상태</div><div class="health">${b.health.map(x=>`<span class="hl"><i>${sc[x.state]||'⚪'} ${esc(PMAP[x.part]?PMAP[x.part].name:x.part)}</i>${esc(x.note||'')}</span>`).join('')}</div>`;
+  if(b.priorities&&b.priorities.length) h+=`<div class="pmsec">이번 주 우선순위</div>${b.priorities.map((p,i)=>`<div class="pmrow"><span>${i+1}.</span><div class="x">${esc(p.text)}${p.owner?` · <b>${esc(p.owner)}</b>`:''}${p.due?` · ${dueLabel(p.due)}`:''}<small>${esc(p.why||'')}</small></div><button data-bp="${i}" ${canWrite?'':'disabled'}>할일로</button></div>`).join('')}`;
+  if(b.decisions&&b.decisions.length) h+=`<div class="pmsec">팀이 정해야 할 것</div>${b.decisions.map((d,i)=>`<div class="pmrow"><span>❓</span><div class="x">${esc(d.question)}<small>PM 제안: ${esc(d.suggestion||'')}</small></div><button data-bd="${i}" ${canWrite?'':'disabled'}>질문 등록</button></div>`).join('')}`;
+  if(b.risks&&b.risks.length) h+=`<div class="pmsec">리스크 · 놓치고 있는 것</div>${b.risks.map(r=>`<div class="pmrow"><span>⚠️</span><div class="x">${esc(r)}</div></div>`).join('')}`;
+  if(b.agenda&&b.agenda.length) h+=`<div class="pmsec">다음 회의 안건</div>${b.agenda.map((a,i)=>`<div class="pmrow"><span>${i+1}.</span><div class="x">${esc(a)}</div></div>`).join('')}<div style="margin-top:6px"><button class="tbtn" id="copyAgenda">📋 안건 복사</button></div>`;
+  h+=`<div class="pmmeta">마지막 브리핑 ${md(briefing.ts)} ${hm(briefing.ts)} · ${esc(briefing.by||'')} 요청</div>`;
+  return h;
+}
+function renderHome(){
+  const myOpen=msgs.filter(m=>m.kind==='todo'&&status(m)!=='done'&&myNick&&(m.assignee===myNick||m.assignee==='다같이'));
+  const openQ=msgs.filter(m=>m.kind==='question'&&!m.done).length;
+  const allOpen=msgs.filter(m=>m.kind==='todo'&&status(m)!=='done');
+  const over=allOpen.filter(m=>dueState(m)==='over').length;
+  const dec=msgs.filter(m=>m.kind==='decision').length;
+  let h=`<div class="scroll"><div class="page">`;
+  h+=`<h2>${myNick?esc(myNick)+'님, ':''}안녕하세요 👋</h2><div class="sub">${dlabel(Date.now())==='오늘'?new Date().getMonth()+1+'월 '+new Date().getDate()+'일 '+WD[new Date().getDay()]+'요일':''} · Ad-racer 팀 현황</div>`;
+  h+=`<div class="kpis">
+    <div class="kpi" data-go="tasks"><b>${myNick?myOpen.length:allOpen.length}</b><span>${myNick?'내 할일':'남은 할일'}</span></div>
+    <div class="kpi ${over?'warn':''}" data-go="tasks"><b>${over}</b><span>마감 지난 할일</span></div>
+    <div class="kpi ${openQ?'warn':''}" data-go="decisions"><b>${openQ}</b><span>정해야 할 질문</span></div>
+    <div class="kpi" data-go="decisions"><b>${dec}</b><span>결정된 것</span></div></div>`;
+  const latest=msgs.filter(m=>inChan(m,'all')).slice(-4);
+  h+=`<div class="card hubcard"><h3>🏁 전체 대화 <span style="color:var(--mute);font-weight:500;font-size:12px">팀의 메인 채널</span><span class="r"><button class="tbtn hubbtn" data-hub="1">열기 →</button></span></h3><div>${latest.length?latest.map(m=>`<div class="lrow" data-hub="1">${avatar(nameOf(m),true)}<div class="x"><div class="t">${esc(String(m.text).slice(0,140))}</div><div class="mm">${(m.parts||[]).map(p=>PMAP[p]?`<span class="tag" style="background:${PMAP[p].color}">${PMAP[p].name}</span>`:'').join('')}<span>${esc(nameOf(m))} · ${dlabel(m.ts)} ${hm(m.ts)}</span>${replies(m.id).length?`<span>💬 ${replies(m.id).length}</span>`:''}</div></div></div>`).join(''):'<div class="empty" style="padding:18px">아직 대화가 없어요. 전체 대화에서 첫 메시지를 남겨보세요.</div>'}</div></div>`;
+  h+=`<div class="card pmcard"><h3>🤖 PM 브리핑<span class="r">${sample?`<button class="tbtn" id="bBtn" ${pmBusy.brief?'disabled':''}>${briefing?'새로 받기':'브리핑 받기'}</button>`:''}</span></h3><div class="cbody">${sample?briefingHtml():'<div class="pmout">PM 기능이 꺼져 있어요. 팀 관리자가 Anthropic API 키를 설정하면 켜져요.</div>'}</div></div>`;
+  h+=`<div class="grid2"><div class="card"><h3>📌 ${myNick?'내 할일':'남은 할일'}<span class="r"><button class="tbtn" data-go="tasks">보드 열기</button></span></h3><div>`;
+  const L=(myNick?myOpen:allOpen).slice().sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')).slice(0,8);
+  h+=L.length?L.map(m=>{const ds=dueState(m);return `<div class="lrow" data-tk="${m.id}"><button class="chk" data-done="${m.id}"></button><div class="x"><div class="t">${esc(m.text)}</div><div class="mm">${m.due?`<span class="kb ${ds==='over'?'red':ds==='today'?'question':'grey'}">📅 ${dueLabel(m.due)}</span>`:''}${status(m)==='doing'?'<span class="kb doing">진행 중</span>':''}${m.assignee?`<span>${esc(m.assignee)}</span>`:''}</div></div></div>`}).join(''):`<div class="empty" style="padding:18px">할일이 없어요</div>`;
+  h+=`</div></div><div class="card"><h3>🗺 사업 지도</h3><div class="cbody"><div class="mapwrap">${mapSvg()}<div class="legend"><span>원 = 논의량</span><span>선 = 함께 논의</span><span style="color:#4ade80">● 결정</span><span style="color:#60a5fa">● 할일</span><span style="color:#fb923c">● 질문</span></div></div></div></div></div>`;
+  h+=`</div></div>`;
+  $('pane').innerHTML=h;
+  $('pane').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
+  $('pane').querySelectorAll('[data-hub]').forEach(b=>b.onclick=()=>go('chan','all'));
+  $('pane').querySelectorAll('.node').forEach(g=>g.onclick=()=>go('chan',g.dataset.p));
+  $('pane').querySelectorAll('[data-tk]').forEach(r=>r.onclick=e=>{if(e.target.closest('[data-done]'))return;openTaskEditor(r.dataset.tk)});
+  $('pane').querySelectorAll('[data-done]').forEach(b=>b.onclick=e=>{e.stopPropagation();if(canWrite){upd(b.dataset.done,{status:'done',done:true});toast('완료! 🎉')}});
+  if($('bBtn')) $('bBtn').onclick=runBriefing;
+  $('pane').querySelectorAll('[data-bp]').forEach(b=>b.onclick=async()=>{const p=briefing.data.priorities[+b.dataset.bp];b.disabled=true;await createItem({kind:'todo',text:p.text,assignee:p.owner,due:p.due,part:p.part});b.textContent='등록됨'});
+  $('pane').querySelectorAll('[data-bd]').forEach(b=>b.onclick=async()=>{const d=briefing.data.decisions[+b.dataset.bd];b.disabled=true;await createItem({kind:'question',text:d.question+(d.suggestion?`\n(PM 제안: ${d.suggestion})`:''),part:d.part});b.textContent='등록됨'});
+  if($('copyAgenda')) $('copyAgenda').onclick=async()=>{try{await navigator.clipboard.writeText(briefing.data.agenda.map((a,i)=>`${i+1}. ${a}`).join('\n'));toast('안건을 복사했어요')}catch(e){toast('복사할 수 없어요')}};
+}
+
+/* ================= PM (Claude) ================= */
+const TEAM_CONTEXT=`너는 "${PM_NAME}" — Ad-racer 3인 창업팀의 프로젝트 매니저야.
+Ad-racer: 마라톤·하이록스·철인3종 등 대회 참가자가 몸/옷에 브랜드 로고 스티커를 붙이고 뛰고, 증빙을 올리면 광고비를 받는 '대회 참가자 × 브랜드' 광고 매칭 플랫폼 (초기 이름 ad-here는 상표 충돌로 변경, 변리사 의견에 따라 애드레이서로 진행 중).
+팀원: 운영(본업 있음, 철인·하이록스 현역 — 현장 인사이트·테스트 레이서), 선영(사업자·상표 명의, 마케팅·인스타·브랜드 리스트업), 승준(아이디어·랜딩페이지·MVP 개발·사업계획서).
+PM으로서: 흩어진 논의를 결정/할일/질문으로 정리하고, 담당자와 마감을 제안하고, 범위가 커지는 걸 막고(MVP 집중), 놓친 리스크와 의견 충돌을 짚어. 팀의 결정을 존중하되 근거 있는 반대 의견은 솔직하게 말해. 한국어 반말 대신 친근한 존댓말, 간결하게. 담당자는 운영/선영/승준/다같이 중 하나. 파트 id는 product, brand, runner, revenue, naming, marketing, plan, legal, finance 중 하나.`;
+function digest(limit=320){
+  const L=msgs.slice(-limit);
+  const lines=L.map(m=>{
+    let s=`[${md(m.ts)} ${nameOf(m)}]`;
+    if(m.kind&&m.kind!=='note'){s+=`[${KINDS[m.kind].label}`;if(m.kind==='todo')s+=`·${STATUS[status(m)]}${m.assignee?'·'+m.assignee:''}${m.due?'·마감'+m.due:''}`;if(m.kind==='question')s+=m.done?'·해결':'·미결';s+=']'}
+    if(m.parts&&m.parts.length)s+=`(${m.parts.join(',')})`;
+    if(m.replyTo)s+=` ↪답글`;
+    if(m.chan==='pm')s+=' {PM채팅}';
+    return s+' '+String(m.text).replace(/\n+/g,' / ').slice(0,400);
+  });
+  let t=lines.join('\n');if(t.length>90000)t=t.slice(-90000);
+  return t;
+}
+function sampleErr(e){
+  const c=e&&e.code;
+  if(c==='cancelled')return;
+  if(c==='unauthenticated'){logout(e.message);return}
+  if(c==='pm_disabled'||c==='not_granted') toast('PM 기능이 꺼져 있어요. 관리자에게 문의하세요');
+  else if(c==='rate_limited') toast('요청이 많아요. 잠시 후 다시 시도해 주세요');
+  else if(c==='session_expired') toast('다시 로그인해 주세요');
+  else if(c==='invalid_json') toast('PM 답변을 읽지 못했어요. 다시 시도해 주세요');
+  else toast('PM이 답하지 못했어요. 다시 시도해 주세요');
+}
+async function askPM({question,rootId,chan,rootObj}){
+  if(!sample||!canWrite){toast('PM 기능을 쓸 수 없어요');return}
+  const key=rootId?'th:'+rootId:'ch:'+(chan||'pm');
+  if(pmBusy[key])return;
+  pmBusy[key]=true;renderAll();
+  const root=rootId?(byId[rootId]||rootObj||null):null;
+  let threadCtx='';
+  if(root){threadCtx=`\n\n[지금 스레드]\n${nameOf(root)}: ${root.text}\n`+replies(root.id).map(r=>`${nameOf(r)}: ${r.text}`).join('\n')}
+  let pmHist='';
+  if(chan==='pm'){pmHist='\n\n[PM 채팅 최근 대화]\n'+msgs.filter(m=>m.chan==='pm').slice(-16).map(m=>`${nameOf(m)}: ${m.text}`).join('\n')}
+  const prompt=`${TEAM_CONTEXT}
+
+오늘: ${today()}
+요청한 사람: ${myNick||'팀원'}
+
+[업무톡 전체 기록 — 오래된 순]
+${digest()}${threadCtx}${pmHist}
+
+[요청]
+${question}
+
+아래 JSON 하나로만 답해.
+{"reply": "팀에게 보여줄 답변 (마크다운 없이, 줄바꿈 가능, 8줄 이내 권장)",
+ "suggestions": [ {"kind":"todo|decision|question","text":"등록할 내용 한 문장","assignee":"운영|선영|승준|다같이|","due":"YYYY-MM-DD 또는 빈 문자열","part":"파트 id"} ]}
+suggestions는 실제로 등록할 가치가 있을 때만 0~4개. 이미 기록된 할일·결정과 중복 금지.`;
+  try{
+    const r=await sample.json(prompt,{cache:false});
+    const reply=String((r&&r.reply)||'').trim()||'정리할 내용이 없어요.';
+    const sug=Array.isArray(r&&r.suggestions)?r.suggestions.filter(s=>s&&s.text&&KINDS[s.kind]).slice(0,4).map(s=>({kind:s.kind,text:String(s.text).slice(0,300),assignee:[...NICKS,'다같이'].includes(s.assignee)?s.assignee:'',due:/^\d{4}-\d{2}-\d{2}$/.test(s.due||'')?s.due:'',part:PMAP[s.part]?s.part:'',added:false})):[];
+    const doc={text:reply,bot:true,who:PM_NAME,kind:'note',ts:Date.now(),done:false,parts:root?(root.parts||[]).slice():[],suggestions:sug};
+    if(root){doc.replyTo=root.id;if(root.chan==='pm')doc.chan='pm'}else doc.chan='pm';
+    await db.collection('msgs').add(doc);
+  }catch(e){if(e&&e.code)sampleErr(e);else fail(e)}
+  pmBusy[key]=false;renderAll();
+  const s=root?$('thScroll'):$('feedScroll');if(s)s.scrollTop=s.scrollHeight;
+}
+async function pmSummarizeChannel(c){
+  if(!sample||!canWrite){toast('PM 기능을 쓸 수 없어요');return}
+  const key='ch:'+c;if(pmBusy[key])return;
+  pmBusy[key]=true;renderAll(true);
+  const name=c==='all'?'전체':PMAP[c].name;
+  const scoped=msgs.filter(m=>{const r=m.replyTo?byId[m.replyTo]:m;return r&&inChan(r,c)}).slice(-200).map(m=>`[${md(m.ts)} ${nameOf(m)}]${m.kind!=='note'?'['+KINDS[m.kind].label+(m.kind==='todo'?'·'+STATUS[status(m)]:'')+(m.kind==='question'?(m.done?'·해결':'·미결'):'')+']':''} ${String(m.text).replace(/\n+/g,' / ').slice(0,400)}`).join('\n');
+  const prompt=`${TEAM_CONTEXT}
+
+오늘: ${today()}
+[#${name} 채널 기록]
+${scoped||'(비어 있음)'}
+
+이 채널을 PM으로서 정리해줘: 지금까지 결정된 것, 진행 중인 것, 아직 열려 있는 쟁점, 다음 한 걸음.
+JSON 하나로만 답해: {"reply":"정리 (마크다운 없이, 10줄 이내)","suggestions":[{"kind":"todo|decision|question","text":"","assignee":"","due":"","part":"${c==='all'?'':c}"}]} — suggestions는 0~4개, 중복 금지.`;
+  try{
+    const r=await sample.json(prompt,{cache:false});
+    const sug=Array.isArray(r&&r.suggestions)?r.suggestions.filter(s=>s&&s.text&&KINDS[s.kind]).slice(0,4).map(s=>({kind:s.kind,text:String(s.text).slice(0,300),assignee:[...NICKS,'다같이'].includes(s.assignee)?s.assignee:'',due:/^\d{4}-\d{2}-\d{2}$/.test(s.due||'')?s.due:'',part:PMAP[s.part]?s.part:(c!=='all'?c:''),added:false})):[];
+    await db.collection('msgs').add({text:'📋 채널 정리\n'+String((r&&r.reply)||'').trim(),bot:true,who:PM_NAME,kind:'note',ts:Date.now(),done:false,parts:c==='all'?[]:[c],suggestions:sug});
+  }catch(e){if(e&&e.code)sampleErr(e);else fail(e)}
+  pmBusy[key]=false;renderAll();const s=$('feedScroll');if(s)s.scrollTop=s.scrollHeight;
+}
+async function createItem({kind,text,assignee,due,part,src}){
+  if(!canWrite||!me){toast('보기 전용이에요');return false}
+  const doc={text,kind,parts:part&&PMAP[part]?[part]:[],uid:me,ts:Date.now(),done:false,src:src||'pm'};
+  if(kind==='todo'){doc.status='todo';if(assignee)doc.assignee=assignee;if(due)doc.due=due}
+  try{await db.collection('msgs').add(doc);toast(`${KINDS[kind].icon} ${KINDS[kind].label} 등록!`);return true}catch(e){fail(e);return false}
+}
+async function addSuggestion(id,i,btn){
+  const m=byId[id];if(!m||!m.suggestions||!m.suggestions[i]||m.suggestions[i].added)return;
+  btn.disabled=true;
+  const s=m.suggestions[i];
+  const ok=await createItem({kind:s.kind,text:s.text,assignee:s.assignee,due:s.due,part:s.part||(m.parts||[])[0]});
+  if(ok){const arr=m.suggestions.map((x,j)=>j===i?Object.assign({},x,{added:true}):x);upd(id,{suggestions:arr})}else btn.disabled=false;
+}
+let briefCtl=null;
+async function runBriefing(){
+  if(!sample||!canWrite){toast('PM 기능을 쓸 수 없어요');return}
+  if(pmBusy.brief)return;
+  pmBusy.brief=true;renderAll();
+  const prompt=`${TEAM_CONTEXT}
+
+오늘: ${today()} (요청: ${myNick||'팀원'})
+[업무톡 전체 기록 — 오래된 순]
+${digest()}
+
+PM으로서 팀 브리핑을 써줘. 기록에 근거해서 구체적으로, 담당자와 마감까지. JSON 하나로만:
+{"headline":"한 문장 현황 요약",
+ "health":[{"part":"파트 id","state":"good|watch|risk","note":"15자 내외"}],
+ "priorities":[{"text":"이번 주에 할 일","owner":"운영|선영|승준|다같이","due":"YYYY-MM-DD 또는 빈 문자열","part":"파트 id","why":"이유 한 줄"}],
+ "decisions":[{"question":"팀이 정해야 할 것","suggestion":"PM 추천안 한 줄","part":"파트 id"}],
+ "risks":["리스크/놓치고 있는 것 한 줄"],
+ "agenda":["다음 회의 안건"]}
+health는 논의가 있는 파트만, priorities 3~5개, decisions 2~4개, risks 2~4개, agenda 3~6개.`;
+  try{
+    const data=await sample.json(prompt,{cache:false,onText:({text})=>{const el=$('briefStream');if(el)el.textContent=text.slice(-240)}});
+    if(!data||typeof data!=='object')throw{code:'invalid_json'};
+    await db.doc('pm/briefing').set({data,ts:Date.now(),by:myNick||''});
+  }catch(e){if(e&&e.code)sampleErr(e);else fail(e)}
+  pmBusy.brief=false;renderAll();
+}
+
+/* ---------- meeting notes ---------- */
+function openMeeting(){
+  if(!sample){toast('PM 기능을 쓸 수 없어요');return}
+  openModal({title:'📝 회의록 → PM 정리',body:`<p style="font-size:13px;color:var(--mute);margin-bottom:10px">회의에서 나온 말을 대충 적어 붙여넣으면, PM 클로드가 결정·할일·질문으로 나눠서 담당과 마감까지 정리해요. 확인 후 골라서 등록하세요.</p><div class="fld"><textarea id="mtT" style="min-height:180px" placeholder="예) 등록비는 1회 가입비로. 승준 MVP 11/30까지. 선영 브랜드 10곳 콜드메일. 얼리버드는 다음 회의에서…"></textarea></div><div id="mtOut"></div>`,ok:'🤖 PM 정리',okClass:'dark',onOk:runMeeting});
+}
+async function runMeeting(){
+  const notes=$('mtT').value.trim();if(!notes)return;
+  const btn=$('mOk');btn.disabled=true;btn.textContent='정리 중…';
+  const prompt=`${TEAM_CONTEXT}
+
+오늘: ${today()}
+[기존 기록 요약용 — 중복 피하기]
+${digest(150)}
+
+[회의 메모]
+${notes}
+
+회의 메모를 정리해줘. JSON 하나로만:
+{"summary":"회의 요약 3~5줄 (마크다운 없이)","items":[{"kind":"decision|todo|question","text":"한 문장","assignee":"운영|선영|승준|다같이|","due":"YYYY-MM-DD 또는 빈 문자열","part":"파트 id"}]}
+메모에 없는 내용은 지어내지 말고, 기존 기록과 중복이면 빼.`;
+  try{
+    const r=await sample.json(prompt,{cache:false});
+    const items=Array.isArray(r&&r.items)?r.items.filter(x=>x&&x.text&&KINDS[x.kind]):[];
+    $('mtOut').innerHTML=`<div class="pmsec">요약</div><div class="pmout" style="white-space:pre-wrap">${esc(r.summary||'')}</div><div class="pmsec">등록할 항목 (체크 해제하면 제외)</div>${items.map((x,i)=>`<label class="mitem"><input type="checkbox" checked data-mi="${i}"><span><span class="kb ${x.kind}">${KINDS[x.kind].icon} ${KINDS[x.kind].label}</span> ${esc(x.text)} <small style="color:var(--mute)">${esc(x.assignee||'')} ${x.due?dueLabel(x.due):''} ${PMAP[x.part]?PMAP[x.part].name:''}</small></span></label>`).join('')||'<div class="pmout">뽑을 항목이 없어요.</div>'}`;
+    btn.disabled=false;btn.textContent='선택 항목 등록';
+    modalOk=async()=>{
+      btn.disabled=true;
+      const pick=[...$('sheet').querySelectorAll('[data-mi]')].filter(c=>c.checked).map(c=>items[+c.dataset.mi]);
+      if(!myNick){openNick();return}
+      try{
+        await db.collection('msgs').add({text:'📝 회의록 ('+md(Date.now())+')\n'+(r.summary||''),kind:'note',parts:[],uid:me,ts:Date.now(),done:false,src:'meeting'});
+        for(const x of pick){const d={text:x.text,kind:x.kind,parts:PMAP[x.part]?[x.part]:[],uid:me,ts:Date.now(),done:false,src:'meeting'};if(x.kind==='todo'){d.status='todo';if([...NICKS,'다같이'].includes(x.assignee))d.assignee=x.assignee;if(/^\d{4}-\d{2}-\d{2}$/.test(x.due||''))d.due=x.due}await db.collection('msgs').add(d)}
+        closeModal();toast(`회의록과 ${pick.length}개 항목을 등록했어요`);
+      }catch(e){fail(e);btn.disabled=false}
+    };
+  }catch(e){btn.disabled=false;btn.textContent='🤖 PM 정리';if(e&&e.code)sampleErr(e)}
+}
+
+
+/* ================= help / manual ================= */
+function renderHelp(){
+  const sec=(id,ic,title,body)=>`<div class="card" id="h-${id}"><h3>${ic} ${title}</h3><div class="cbody help">${body}</div></div>`;
+  let h=`<div class="scroll"><div class="page" style="max-width:760px">`;
+  h+=`<h2>📖 업무톡 사용 매뉴얼</h2><div class="sub">처음이라면 1~3번만 읽어도 바로 쓸 수 있어요.</div>`;
+  h+=`<div class="toc">${[['start','1. 시작하기'],['install','📲 앱 설치'],['chan','2. 채널과 메시지'],['kind','3. 메시지 종류'],['thread','4. 스레드·반응'],['tasks','5. 할일 보드'],['dec','6. 결정·질문'],['pm','7. PM 클로드'],['rules','8. 팀 규칙 제안'],['faq','9. 자주 묻는 질문'],['backup','10. 백업·이전']].map(([k,l])=>`<button class="fb" data-h="${k}">${l}</button>`).join('')}</div>`;
+  h+=sec('start','🚀','1. 시작하기',`<ol>
+    <li><b>가입하기 (처음 한 번)</b> — 로그인 화면의 <b>처음이에요 (가입)</b> 탭에서 이름(<b>운영 / 선영 / 승준</b>)을 고르고, 각자 비밀번호(8자 이상)와 관리자에게 받은 <b>팀 가입 코드</b>를 넣어요.</li>
+    <li><b>로그인</b> — 다음부터는 이름과 비밀번호로 들어와요. 한 기기에서 한 번 로그인하면 30일 동안 유지돼요. 왼쪽 아래 <b>계정</b>에서 이름 변경·비밀번호 변경·로그아웃을 할 수 있어요.</li>
+    <li><b>비밀번호는 각자 따로</b> — 다른 사람과 공유하지 마세요. 공용 PC에서는 다 쓰고 꼭 로그아웃하세요.</li>
+    <li><b>휴대폰에서</b> — 왼쪽 위 <b>☰</b>를 누르면 메뉴(채널 목록)가 열려요. 아래 <b>📲 앱 설치</b>대로 홈 화면에 설치해 두면 앱처럼 쓸 수 있어요.</li></ol>`);
+  h+=sec('install','📲','폰에 앱으로 설치하기',`<table class="ht">
+    <tr><td><b>아이폰</b></td><td><b>Safari</b>로 업무톡 주소 열기 → 아래 <b>공유 버튼</b>(□↑) → <b>홈 화면에 추가</b>. 카톡 안에서 연 화면이나 크롬에서는 설치가 안 되니 꼭 Safari로 여세요.</td></tr>
+    <tr><td><b>안드로이드</b></td><td><b>크롬</b>으로 열기 → 오른쪽 위 <b>⋮</b> → <b>앱 설치</b>(또는 홈 화면에 추가). 메뉴의 <b>📲 폰에 앱으로 설치</b>를 눌러도 돼요.</td></tr>
+    <tr><td><b>컴퓨터</b></td><td>크롬·엣지 주소창 오른쪽의 설치 아이콘을 누르면 창 하나짜리 앱으로 열려요.</td></tr></table>
+    <p>설치한 앱은 브라우저와 로그인이 따로라서 <b>한 번 더 로그인</b>해야 해요. 로그인은 30일 동안 유지돼요.</p>
+    <p class="note">새 글 <b>알림(푸시)은 오지 않아요.</b> 급한 건 카톡으로 “업무톡 확인해줘”라고 알려주세요.</p>`);
+  h+=sec('chan','#','2. 채널과 메시지',`<p>채널은 <b>사업 파트별 대화방</b>이에요. 해당 채널에 쓰면 그 파트로 자동 분류되고, 사업 지도에도 반영돼요.</p>
+    <table class="ht">${[['🏁 전체 대화','팀의 메인 채널. 모든 파트 채널의 글이 여기 모여요. 팀 공지나 파트를 정하기 애매한 이야기도 여기에'],...PARTS.map(p=>['# '+p.ch,p.topic])].map(([a,b])=>`<tr><td><b>${esc(a)}</b></td><td>${esc(b)}</td></tr>`).join('')}</table>
+    <ul><li><b>보내기</b> — 컴퓨터는 Enter (줄바꿈은 Shift+Enter), 휴대폰은 ➤ 버튼.</li>
+    <li><b>🏷 파트</b> — 한 메시지가 여러 파트에 걸치면 파트를 추가하세요(최대 3개). 두 채널에 모두 보이고, 사업 지도에서 두 파트가 선으로 이어져요.</li>
+    <li>안 읽은 메시지가 있는 채널은 <b>굵은 글씨 + 숫자</b>로 표시돼요.</li></ul>`);
+  h+=sec('kind','🏷','3. 메시지 종류 — 이게 핵심이에요',`<p>입력창 왼쪽 아래 <b>💬 메시지</b> 버튼에서 종류를 골라요. 종류를 붙이면 <b>잊혀지지 않고</b> 할일 보드·결정 로그에 자동으로 모여요.</p>
+    <table class="ht">
+    <tr><td><span class="kb grey">💬 메시지</span></td><td>일반 대화, 의견</td></tr>
+    <tr><td><span class="kb decision">✅ 결정</span></td><td>“이걸로 하자”가 정해졌을 때. 결정 로그에 남아요</td></tr>
+    <tr><td><span class="kb todo">📌 할일</span></td><td>누가 언제까지 할 일. <b>담당자</b>와 <b>마감일</b>을 같이 정해요 → 할일 보드</td></tr>
+    <tr><td><span class="kb question">❓ 질문</span></td><td>셋이 같이 정해야 하는 것. 해결될 때까지 홈에 숫자로 떠 있어요</td></tr>
+    <tr><td><span class="kb idea">💡 아이디어</span></td><td>지금 당장은 아니지만 나중에 볼 것. 아이디어 보관함으로</td></tr></table>
+    <p>이미 보낸 메시지도 바꿀 수 있어요: 메시지 <b>⋯</b> (휴대폰은 메시지를 탭) → <b>종류·파트 바꾸기</b>. 대화하다 결론이 나면 그 메시지를 “결정”으로 바꾸는 습관을 들이면 좋아요.</p>`);
+  h+=sec('thread','💬','4. 스레드와 반응',`<ul>
+    <li><b>스레드</b> — 메시지에 마우스를 올리고 💬 (휴대폰은 탭 → 스레드에서 답글). 한 주제의 논의는 스레드에 모아서 채널이 어지럽지 않게 해요.</li>
+    <li><b>반응</b> — 👍 ✅ 👀 🔥 등. “확인했어요”는 답글 대신 ✅ 반응으로 충분해요.</li>
+    <li><b>수정·삭제·복사</b> — ⋯ 메뉴에서. 수정은 내가 쓴 메시지만 가능해요.</li></ul>`);
+  h+=sec('tasks','📋','5. 할일 보드',`<ul>
+    <li>📌 할일로 보낸 메시지가 모두 여기 모여요. <b>할 일 → 진행 중 → 완료</b> 세 칸으로 보여요(휴대폰은 옆으로 넘겨요).</li>
+    <li>카드를 누르면 <b>상태·담당·마감일·파트</b>를 바꿀 수 있어요. 마감이 지나면 빨간색으로 표시돼요.</li>
+    <li>위쪽 버튼으로 <b>내 할일</b>, 사람별, 파트별로 걸러 볼 수 있어요. <b>+ 할일</b>로 바로 추가도 돼요.</li>
+    <li>홈의 할일 목록에서 □ 를 누르면 바로 완료 처리돼요.</li></ul>`);
+  h+=sec('dec','✅','6. 결정 · 질문',`<ul>
+    <li><b>정해야 할 질문</b> — 아직 열린 질문. 회의 때 이 목록을 위에서부터 정리하면 돼요. 정해지면 □ 체크 → “해결됨”.</li>
+    <li><b>결정 로그</b> — 최신순. “우리 그거 어떻게 하기로 했지?” 할 때 검색하세요.</li>
+    <li>항목을 누르면 원래 대화(스레드)로 이동해요.</li></ul>`);
+  h+=sec('pm','🤖','7. PM 클로드 — 우리 팀 프로젝트 매니저',`<p>PM 클로드는 업무톡에 쌓인 <b>모든 대화·결정·할일을 읽고</b> 정리·제안해요. 호출할 때만 움직여요.</p>
+    <table class="ht">
+    <tr><td><b>🏠 홈 → PM 브리핑</b></td><td>파트별 상태(🟢🟡🔴), 이번 주 우선순위, 팀이 정해야 할 것, 리스크, 다음 회의 안건. 항목 옆 버튼으로 바로 할일·질문 등록. <b>주 1회(예: 월요일)</b> 받는 걸 추천해요. 결과는 셋 모두에게 보여요.</td></tr>
+    <tr><td><b>@PM</b></td><td>어느 채널에서든 메시지에 <code>@PM</code>을 붙이면(입력창의 🤖 @PM 버튼) 스레드에 답해요. 예: “@PM 이 가격안 리스크 뭐야?”</td></tr>
+    <tr><td><b>🤖 PM 클로드 (사이드바)</b></td><td>PM과 1:1 대화. 예: “이번 주 내가 할 일 정리해줘”, “11/14 하이록스 전에 준비할 것?”</td></tr>
+    <tr><td><b>PM 채널 정리</b></td><td>채널 위 버튼. 그 채널의 결정·진행·쟁점·다음 걸음을 요약해서 올려요.</td></tr>
+    <tr><td><b>PM 정리 (스레드)</b></td><td>길어진 스레드를 결정/할일/질문으로 정리.</td></tr>
+    <tr><td><b>📝 회의록 정리</b></td><td>홈 위 버튼. 오프라인 회의 메모를 대충 붙여넣으면 요약 + 결정·할일·질문으로 쪼개요. 체크한 항목만 등록돼요.</td></tr></table>
+    <p><b>PM 제안</b>은 자동 등록되지 않아요. 제안 카드의 <b>등록</b>을 눌러야 할일·결정이 생겨요.</p>
+    <p class="note">⚠️ PM 기능은 팀 관리자가 연결한 <b>Anthropic API 키</b>로 동작해요(쓴 만큼 요금이 나가요). 키가 없으면 PM 버튼이 보이지 않아요. PM은 업무톡 안의 기록만 볼 수 있고, 카톡·인터넷은 못 봐요. 판단은 참고용이고 최종 결정은 팀이 해요.</p>`);
+  h+=sec('rules','🤝','8. 팀 규칙 제안 (합의해서 바꿔 쓰세요)',`<ol>
+    <li><b>사업 논의는 업무톡, 카톡은 “업무톡 확인해줘” 알림용.</b> (업무톡은 알림이 안 와요)</li>
+    <li><b>결론이 나면 그 자리에서 ✅ 결정으로 표시.</b> 결정 로그에 없는 건 결정 안 된 것.</li>
+    <li><b>할일은 담당자 + 마감일 없이 만들지 않기.</b></li>
+    <li><b>월요일엔 PM 브리핑</b>, 오프라인 회의 후엔 <b>📝 회의록 정리</b>.</li>
+    <li><b>비밀번호·계좌번호·주민번호는 절대 올리지 않기.</b></li></ol>`);
+  h+=sec('faq','❓','9. 자주 묻는 질문',`<dl>
+    <dt>새 글 알림이 와요?</dt><dd>아니요. 직접 열어서 확인해야 해요. 열어 둔 화면은 5초마다 새 글을 불러오고, 사이드바의 숫자가 안 읽은 글이에요.</dd>
+    <dt>비밀번호를 잊었어요.</dt><dd>팀 관리자가 스프레드시트의 <b>업무톡 관리 → 비밀번호 초기화</b>로 임시 비밀번호를 알려줘요. 로그인한 뒤 <b>계정 → 비밀번호 변경</b>으로 바꾸세요.</dd>
+    <dt>“여러 번 틀렸어요”라고 나와요.</dt><dd>비밀번호를 5번 틀리면 15분 동안 잠겨요. 잠시 후 다시 시도하세요.</dd>
+    <dt>“카톡 이관” 표시는 뭐예요?</dt><dd>업무톡을 만들기 전 카톡(11/3~11/11)에서 정리해 옮긴 기록이에요.</dd>
+    <dt>메시지가 많아지면?</dt><dd>최근 1,000개까지 보여요. 가까워지면 화면에 안내가 떠요.</dd>
+    <dt>PM 답변이 이상해요.</dt><dd>질문을 더 구체적으로 다시 물어보거나, 메시지 종류·파트를 정확히 달아두면 PM이 더 정확해져요.</dd></dl>`);
+  h+=sec('backup','💾','10. 백업 · 다른 계정으로 옮기기',`<p><b>백업 만들기</b> — 아래 버튼을 누르면 모든 기록(메시지·할일·결정·PM 브리핑)이 백업 텍스트로 복사돼요. 메모장 등에 붙여넣어 <code>.json</code> 파일로 저장하세요. 작성자 이름이 함께 저장돼서 다른 계정에서도 누가 썼는지 유지돼요.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px"><button class="btn dark" id="bkExport">📋 백업 복사</button><button class="btn" id="bkImport" ${canWrite?'':'disabled'}>📥 백업 가져오기</button></div>
+    <p><b>다른 업무톡으로 옮기는 법</b></p><ol>
+    <li>지금 계정에서 <b>📋 백업 복사</b> → 파일로 저장.</li>
+    <li>옮겨 갈 업무톡에 가입·로그인.</li>
+    <li>매뉴얼 → <b>📥 백업 가져오기</b>에 백업 텍스트를 붙여넣기. 작성자 이름은 그대로 유지돼요.</li>
+    <li>팀원에게 새 주소와 가입 코드를 알려주고, 각자 다시 가입하면 끝.</li></ol>`);
+  h+=`</div></div>`;
+  $('pane').innerHTML=h;
+  $('pane').querySelectorAll('[data-h]').forEach(b=>b.onclick=()=>{const el=$('h-'+b.dataset.h);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})});
+  $('bkExport').onclick=exportBackup;
+  $('bkImport').onclick=openImport;
+}
+function backupJson(){
+  const out={app:'adracer-talk',version:1,exportedAt:new Date().toISOString(),msgs:{},briefing:briefing||null};
+  msgs.forEach(m=>{
+    const d=JSON.parse(JSON.stringify(m));delete d.id;
+    if(d.uid){d.who=nameOf(m);delete d.uid}
+    if(d.reactions){const R={};Object.entries(d.reactions).forEach(([k,arr])=>{R[k]=(arr||[]).map(u=>(members[u]&&members[u].nick)?'nick:'+members[u].nick:u)});d.reactions=R}
+    out.msgs[m.id]=d;
+  });
+  return JSON.stringify(out);
+}
+async function exportBackup(){
+  const txt=backupJson();
+  try{await navigator.clipboard.writeText(txt);toast(`백업 ${msgs.length}건을 복사했어요. 파일로 저장해 두세요`)}
+  catch(e){openModal({title:'백업 텍스트',body:`<p style="font-size:13px;color:var(--mute);margin-bottom:8px">자동 복사가 안 돼서 아래 내용을 전체 선택해 복사하세요.</p><div class="fld"><textarea readonly style="min-height:240px;font-size:11px">${esc(txt)}</textarea></div>`,noFoot:true})}
+}
+function openImport(){
+  openModal({title:'📥 백업 가져오기',body:`<p style="font-size:13px;color:var(--mute);margin-bottom:8px">백업 텍스트를 붙여넣으세요. 같은 메시지가 이미 있으면 백업 내용으로 덮어써요.</p><div class="fld"><textarea id="imT" style="min-height:200px;font-size:12px" placeholder='{"app":"adracer-talk", ...}'></textarea></div><div id="imMsg" style="font-size:13px"></div>`,ok:'가져오기',onOk:async()=>{
+    let data;try{data=JSON.parse($('imT').value)}catch(e){$('imMsg').textContent='백업 형식이 아니에요.';return}
+    if(!data||data.app!=='adracer-talk'||!data.msgs){$('imMsg').textContent='업무톡 백업이 아니에요.';return}
+    const ids=Object.keys(data.msgs);const btn=$('mOk');btn.disabled=true;
+    let n=0,i=0;
+    try{
+      for(;i<ids.length;i+=100){
+        const chunk={};ids.slice(i,i+100).forEach(id=>chunk[id]=data.msgs[id]);
+        n+=await gs('api_import',token,chunk,i===0&&data.briefing&&data.briefing.data?data.briefing:null);
+        $('imMsg').textContent=`${Math.min(i+100,ids.length)}/${ids.length} 가져오는 중…`;
+      }
+      store.rev=null;poll();
+      closeModal();toast(`${n}건을 가져왔어요`);
+    }catch(e){btn.disabled=false;$('imMsg').textContent=`${n}건까지 가져왔어요. 다시 누르면 처음부터 다시 덮어써요.`;fail(e)}
+  }});
+}
+
+/* ================= render all ================= */
+let lastView='';
+function renderAll(scroll){
+  renderSide();renderTop();
+  const v=S.view+':'+S.ch;const changed=v!==lastView;lastView=v;
+  const fs=$('feedScroll');const keep=fs&&!changed?{top:fs.scrollTop,near:fs.scrollHeight-fs.scrollTop-fs.clientHeight<140}:null;
+  // preserve focus in composer
+  const ae=document.activeElement;const aid=ae&&ae.id&&ae.id.startsWith('ta-')?ae.id:null;const sel=aid?ae.selectionStart:0;
+  if(S.view!=='chan')$('pane').dataset.k='';
+  if(S.view==='home')renderHome();
+  else if(S.view==='tasks')renderTasks();
+  else if(S.view==='decisions')renderDecisions();
+  else if(S.view==='help')renderHelp();
+  else renderChannel(scroll||changed);
+  if(keep){const n=$('feedScroll');if(n)n.scrollTop=keep.near?n.scrollHeight:keep.top}
+  const ts=$('thScroll');const tkeep=ts?{top:ts.scrollTop,near:ts.scrollHeight-ts.scrollTop-ts.clientHeight<140}:null;
+  renderThread(scroll);
+  if(tkeep&&!scroll){const n=$('thScroll');if(n)n.scrollTop=tkeep.near?n.scrollHeight:tkeep.top}
+  if(aid&&$(aid)){const t=$(aid);t.focus();try{t.setSelectionRange(sel,sel)}catch(e){}}
+}
+
+/* ================= Apps Script 연결 ================= */
+const TOK_KEY='ar_tok';
+function loadTok(){try{return localStorage.getItem(TOK_KEY)}catch(e){return null}}
+function saveTok(t){try{t?localStorage.setItem(TOK_KEY,t):localStorage.removeItem(TOK_KEY)}catch(e){}}
+async function gs(fn,...args){
+  if(!/^https:\/\/script\.google\.com\/.+\/exec$/.test(API_URL))throw {code:'setup_required',message:'앱 설정이 필요해요: index.html의 API_URL에 Apps Script 웹앱 주소를 넣어주세요.'};
+  let res;
+  try{res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,args}),redirect:'follow'})}
+  catch(e){throw {code:'network',message:'서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.'}}
+  let j;
+  try{j=await res.json()}catch(e){throw {code:'network',message:'서버 응답을 읽지 못했어요. 웹앱 배포의 액세스 권한이 “모든 사용자”인지 확인해 주세요.'}}
+  if(j&&j.ok)return j.result;
+  const m=String((j&&j.error)||'');
+  const mm=m.match(/^([a-z_]+):([\s\S]*)$/);
+  throw mm?{code:mm[1],message:mm[2].trim()}:{code:'server',message:m||'서버 오류가 났어요.'};
+}
+
+/* 서버 데이터를 기존 화면 코드가 쓰던 db 모양으로 감싸기 */
+const store={rev:null,msgs:[],members:[],briefing:null,ls:{msgs:[],members:[],brief:[]}};
+const snapMsgs=()=>({docs:store.msgs.map(d=>({id:d.id,data:()=>d})),metadata:{fromCache:false}});
+const snapMembers=()=>({docs:store.members.map(m=>({id:m.uid,data:()=>({nick:m.nick})})),metadata:{fromCache:false}});
+const snapBrief=()=>({exists:!!store.briefing,data:()=>store.briefing});
+function emit(){store.ls.members.forEach(f=>f(snapMembers()));store.ls.brief.forEach(f=>f(snapBrief()));store.ls.msgs.forEach(f=>f(snapMsgs()))}
+function localPatch(id,patch){const d=store.msgs.find(x=>x.id===id);if(d){Object.assign(d,JSON.parse(JSON.stringify(patch)));emit()}}
+function localDelete(id){const n=store.msgs.length;store.msgs=store.msgs.filter(x=>x.id!==id);if(store.msgs.length!==n)emit()}
+function mkDb(){
+  const col=name=>({
+    add:async doc=>{const id=await gs('api_add',token,doc);poll();return {id}},
+    orderBy(){return this},limit(){return this},
+    onSnapshot(cb){store.ls[name].push(cb);return ()=>{}}
+  });
+  const doc=path=>{
+    const i=path.indexOf('/'),c=path.slice(0,i),id=path.slice(i+1);
+    return {
+      update:async patch=>{localPatch(id,patch);try{await gs('api_update',token,id,patch)}catch(e){store.rev=null;throw e}finally{poll()}},
+      set:async d=>{
+        if(c==='members'){const n=await gs('api_setNick',token,d.nick);myNick=n;poll();return}
+        if(c==='pm'){await gs('api_setBriefing',token,d.data);poll();return}
+        await gs('api_import',token,{[id]:d},null);poll();
+      },
+      delete:async()=>{localDelete(id);try{await gs('api_delete',token,id)}catch(e){store.rev=null;throw e}finally{poll()}},
+      onSnapshot(cb){store.ls.brief.push(cb);return ()=>{}}
+    };
+  };
+  return {collection:col,doc};
+}
+const mkSample=()=>({json:prompt=>gs('api_pm',token,prompt)});
+
+/* 5초마다 바뀐 게 있는지 확인 (화면을 안 볼 땐 30초) */
+let pollT=null,polling=false,pollAgain=false,netBad=false;
+async function poll(){
+  if(!token)return;
+  if(polling){pollAgain=true;return}
+  polling=true;
+  try{
+    const r=await gs('api_sync',token,store.rev);
+    if(netBad){netBad=false;banner('')}
+    if(r&&!r.same){
+      store.rev=r.rev;store.msgs=r.msgs||[];store.members=r.members||[];store.briefing=r.briefing||null;
+      if(r.me&&r.me.nick)myNick=r.me.nick;
+      if(!!r.pmEnabled!==pmEnabled){pmEnabled=!!r.pmEnabled;sample=pmEnabled?mkSample():null}
+      emit();
+    }
+  }catch(e){
+    if(e.code==='unauthenticated'){polling=false;logout(e.message);return}
+    if(!netBad){netBad=true;banner('서버와 연결이 끊겼어요. 다시 연결하는 중…',true)}
+  }
+  polling=false;
+  if(pollAgain){pollAgain=false;poll()}
+}
+function schedule(){clearTimeout(pollT);if(!token)return;pollT=setTimeout(async()=>{await poll();schedule()},document.hidden?30000:5000)}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&token){poll();schedule()}});
+
+function startApp(){
+  db=mkDb();sample=pmEnabled?mkSample():null;canWrite=true;dbFail=false;ready=true;
+  store.rev=null;store.ls={msgs:[],members:[],brief:[]};
+  db.collection('msgs').orderBy('ts').limit(1000).onSnapshot(snap=>{
+    msgs=snap.docs.map(d=>Object.assign({id:d.id},d.data()));
+    byId=Object.fromEntries(msgs.map(m=>[m.id,m]));
+    if(msgs.length>=1000)banner('최근 1,000개 메시지만 보여요. 오래된 기록은 시트에 그대로 남아 있어요.');
+    renderAll();
+  });
+  db.collection('members').onSnapshot(snap=>{members={};snap.docs.forEach(d=>members[d.id]=d.data());if(me&&members[me])myNick=members[me].nick});
+  db.doc('pm/briefing').onSnapshot(s=>{briefing=s.exists?s.data():null});
+  renderAll();
+  poll().then(schedule);
+}
+function onAuthed(r,first){
+  token=r.token;saveTok(token);me=r.uid;myNick=r.nick;pmEnabled=!!r.pmEnabled;
+  $('login').classList.remove('on');
+  startApp();
+  if(first){go('help');toast('가입 완료! 매뉴얼부터 보여드릴게요')}
+}
+function logout(msg){
+  const t=token;token=null;saveTok(null);clearTimeout(pollT);
+  if(t&&!msg)gs('api_logout',t).catch(()=>{});
+  db=null;sample=null;me=null;myNick=null;canWrite=false;pmEnabled=false;
+  msgs=[];byId={};members={};briefing=null;S.thread=null;
+  store.rev=null;store.msgs=[];store.members=[];store.briefing=null;store.ls={msgs:[],members:[],brief:[]};
+  lmode='in';closeModal();banner('');renderAll();showLogin(msg||'');
+}
+
+/* ================= 로그인 화면 ================= */
+let lmode='in',lNickVal='';
+document.querySelectorAll('[data-lt]').forEach(b=>b.onclick=()=>{const n=$('lNick');if(n)lNickVal=n.value;lmode=b.dataset.lt;renderLogin('')});
+function showLogin(msg){$('login').classList.add('on');renderLogin(msg)}
+function renderLogin(msg){
+  const up=lmode==='up';
+  document.querySelectorAll('[data-lt]').forEach(b=>b.classList.toggle('on',b.dataset.lt===lmode));
+  $('lform').innerHTML=`<form id="lf" autocomplete="on">
+    <div class="fld"><label>이름</label><div class="nickopts">${NICKS.map(n=>`<button type="button" data-ln="${n}" class="${lNickVal===n?'on':''}">${n}</button>`).join('')}</div>
+      <input id="lNick" name="username" autocomplete="username" maxlength="12" placeholder="이름" value="${esc(lNickVal)}"></div>
+    <div class="fld"><label>비밀번호${up?' (8자 이상)':''}</label><input id="lPw" type="password" name="password" autocomplete="${up?'new-password':'current-password'}"></div>
+    ${up?`<div class="fld"><label>비밀번호 확인</label><input id="lPw2" type="password" autocomplete="new-password"></div>
+    <div class="fld"><label>팀 가입 코드</label><input id="lCode" autocomplete="off" placeholder="관리자에게 받은 코드"></div>`:''}
+    <div class="lerr" id="lErr">${esc(msg||'')}</div>
+    <button class="lbtn" id="lGo" type="submit">${up?'가입하고 시작하기':'로그인'}</button>
+    <div class="lnote">${up?'가입 코드는 팀 관리자가 알려줘요. 비밀번호는 각자 정하고 다른 사람과 공유하지 마세요.':'비밀번호를 잊었다면 팀 관리자에게 초기화를 요청하세요.'}</div>
+    ${!isStandalone()&&window.matchMedia('(max-width:820px)').matches?`<button type="button" id="lInst" style="margin-top:12px;width:100%;padding:9px;border:1px dashed #ccc;border-radius:9px;font-size:13px;font-weight:600">📲 폰 홈 화면에 앱으로 설치하기</button>`:''}</form>`;
+  if($('lInst'))$('lInst').onclick=openInstall;
+  $('lform').querySelectorAll('[data-ln]').forEach(b=>b.onclick=()=>{
+    $('lNick').value=b.dataset.ln;lNickVal=b.dataset.ln;
+    $('lform').querySelectorAll('[data-ln]').forEach(x=>x.classList.toggle('on',x===b));
+    $('lPw').focus();
+  });
+  $('lNick').oninput=e=>{lNickVal=e.target.value;$('lform').querySelectorAll('[data-ln]').forEach(x=>x.classList.toggle('on',x.dataset.ln===lNickVal))};
+  $('lf').onsubmit=doAuth;
+}
+async function doAuth(e){
+  e.preventDefault();
+  const up=lmode==='up',nick=$('lNick').value.trim(),pw=$('lPw').value,err=t=>{$('lErr').textContent=t};
+  if(!nick)return err('이름을 입력해 주세요.');
+  if(!pw)return err('비밀번호를 입력해 주세요.');
+  if(up){
+    if(pw.length<8)return err('비밀번호는 8자 이상이어야 해요.');
+    if(pw!==$('lPw2').value)return err('비밀번호 확인이 맞지 않아요.');
+    if(!$('lCode').value.trim())return err('팀 가입 코드를 입력해 주세요.');
+  }
+  const b=$('lGo');b.disabled=true;b.textContent='확인 중…';err('');
+  try{
+    const r=up?await gs('api_register',nick,pw,$('lCode').value.trim()):await gs('api_login',nick,pw);
+    onAuthed(r,up);
+  }catch(x){err(x.message||'실패했어요.');b.disabled=false;b.textContent=up?'가입하고 시작하기':'로그인'}
+}
+
+/* ================= 앱 설치 (PWA) ================= */
+let installEvt=null;
+const isStandalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;renderSide()});
+window.addEventListener('appinstalled',()=>{installEvt=null;toast('업무톡을 설치했어요 📲');renderSide()});
+if('serviceWorker' in navigator&&location.protocol!=='file:'){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
+async function openInstall(){
+  if(isStandalone()){toast('이미 앱으로 쓰고 있어요');return}
+  if(installEvt){const e=installEvt;installEvt=null;e.prompt();try{await e.userChoice}catch(x){}renderSide();return}
+  const ios=isIOS();
+  openModal({title:'📲 폰에 앱으로 설치',noFoot:true,body:`<div class="help">
+    ${ios?`<p><b>아이폰 (Safari)</b></p><ol><li>이 페이지를 <b>Safari</b>로 열어요. (카톡·크롬 안 브라우저에서는 안 돼요)</li><li>아래쪽 <b>공유 버튼</b>(□↑)을 눌러요.</li><li><b>홈 화면에 추가</b> → <b>추가</b>.</li></ol>`
+    :`<p><b>안드로이드 (크롬)</b></p><ol><li>이 페이지를 <b>크롬</b>으로 열어요.</li><li>오른쪽 위 <b>⋮</b> → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>.</li></ol><p><b>아이폰</b>이라면 Safari로 열고 공유 버튼(□↑) → <b>홈 화면에 추가</b>.</p>`}
+    <p class="note">설치하면 홈 화면의 <b>업무톡</b> 아이콘으로 바로 열리고, 주소창 없이 전체 화면으로 보여요. 설치한 앱에서는 한 번 더 로그인해 주세요.</p></div>`});
+}
+
+/* ================= boot ================= */
+renderAll();
+fromHash();
+(async()=>{
+  if(!/^https:\/\/script\.google\.com\/.+\/exec$/.test(API_URL)){ready=true;dbFail=true;banner('앱 설정이 필요해요: index.html의 API_URL에 Apps Script 웹앱 주소를 넣어주세요.',true);renderAll();return}
+  const t=loadTok();
+  if(t){
+    try{const r=await gs('api_me',t);onAuthed(r,false);return}
+    catch(e){if(e.code==='unauthenticated')saveTok(null);else{ready=true;renderAll();showLogin('서버에 연결하지 못했어요. 새로고침해 주세요.');return}}
+  }
+  ready=true;renderAll();showLogin('');
+})();
+</script>
+</body>
+</html>
