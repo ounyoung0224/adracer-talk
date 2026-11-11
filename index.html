@@ -295,6 +295,9 @@ input.pill{padding:2px 6px}
 .ilink{color:#1264a3;font-weight:600;text-align:left;font-size:14px}
 .ilink:hover{text-decoration:underline}
 @media (max-width:820px){.kanban.k4{grid-template-columns:repeat(4,82vw)}}
+.pmerr{background:#fde8e6;color:#9b1c1c;border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:10px;line-height:1.5}
+.pmerr small{color:#b45454}
+.elapsed{color:var(--mute);font-size:12px;font-weight:600}
 /* login */
 .login{position:fixed;inset:0;background:var(--side);display:none;align-items:center;justify-content:center;padding:16px;z-index:80;overflow-y:auto}
 .login.on{display:flex}
@@ -850,6 +853,23 @@ function renderDecisions(){
   $('pane').querySelectorAll('[data-open]').forEach(r=>r.onclick=()=>{const m=byId[r.dataset.open];S.view='chan';S.ch=m.chan==='pm'?'pm':((m.parts||[])[0]||'all');S.thread=m.id;renderAll(true)});
 }
 
+/* ================= PM 진행·오류 표시 ================= */
+const pmErr={},pmStart={};
+function pmFail(key,e){
+  const c=e&&e.code;
+  if(c==='unauthenticated'){logout(e.message);return}
+  if(c==='cancelled')return;
+  const msg=(e&&e.message)||({invalid_json:'PM 답변을 읽지 못했어요.',network:'서버에 연결하지 못했어요.'}[c])||'알 수 없는 오류예요.';
+  pmErr[key]={msg,code:c||'',ts:Date.now(),took:pmStart[key]?Math.round((Date.now()-pmStart[key])/1000):0};
+  if(c)sampleErr(e);else fail(e);
+}
+function pmErrHtml(key){
+  const x=pmErr[key];if(!x)return '';
+  return `<div class="pmerr">⚠️ 마지막 시도가 실패했어요 (${hm(x.ts)}, ${x.took}초 걸림)<br><b>${esc(x.msg)}</b>${x.code?` <small>[${esc(x.code)}]</small>`:''}<br><small>이 문구를 캡처해서 Claude에게 보여주면 원인을 찾을 수 있어요.</small></div>`;
+}
+const elapsedHtml=key=>` · <span class="elapsed" data-since="${pmStart[key]||Date.now()}">0초</span> <span class="elapsed">(보통 30초~1분, 화면을 켜 두세요)</span>`;
+setInterval(()=>{document.querySelectorAll('.elapsed[data-since]').forEach(el=>{el.textContent=Math.round((Date.now()-Number(el.dataset.since))/1000)+'초'})},1000);
+
 /* ================= 아이디어 랩 ================= */
 const STAGES={seed:{l:'씨앗',ic:'🌱',d:'막 떠오른 아이디어'},grow:{l:'키우는 중',ic:'🌿',d:'토론·검증하는 중'},ready:{l:'실행 준비',ic:'🚀',d:'할일로 옮길 준비 완료'},park:{l:'보류',ic:'🗄',d:'지금은 아니지만 남겨둘 것'}};
 const VERDICT={now:{l:'지금 키우기',c:'decision'},later:{l:'나중에',c:'idea'},park:{l:'보류 추천',c:'grey'}};
@@ -932,8 +952,9 @@ function openIdea(id){
       <button class="tbtn" id="ioMore">⋯ 더보기</button></div>
     <div class="card pmcard" style="margin:4px 0 0"><h3>🤖 PM과 키우기</h3><div class="cbody">`;
   if(!sample) b+=`<div class="pmout">PM 기능이 꺼져 있어요.</div>`;
-  else if(busy) b+=`<div class="typing" style="padding:4px 0">${PM_NAME}가 아이디어를 살펴보는 중 <span class="dots"><span></span><span></span><span></span></span></div>`;
+  else if(busy) b+=`<div class="typing" style="padding:4px 0">${PM_NAME}가 아이디어를 살펴보는 중 <span class="dots"><span></span><span></span><span></span></span>${elapsedHtml('idea:'+id)}</div>`;
   else{
+    b+=pmErrHtml('idea:'+id);
     b+=p?ideaPmHtml(m):`<div class="pmout">PM이 이 아이디어를 <b>한 줄 피치 · 왜 해볼 만한지 · 지금 우선순위와의 관계 · 리스크 · 가장 싸게 검증하는 실험 · 다음 할일</b>로 다듬어줘요. 토론(스레드) 내용도 같이 읽어요.</div>`;
     b+=`<div class="fld" style="margin:12px 0 6px"><input id="ioAsk" maxlength="300" placeholder="PM에게 같이 물어볼 것 (선택) 예) 비용은 얼마나 들까?"></div>
       <button class="btn dark" id="ioPm" ${canWrite?'':'disabled'}>${p?'🔄 다시 분석':'🤖 PM과 키우기'}</button>`;
@@ -958,7 +979,7 @@ function openIdea(id){
 async function pmGrowIdea(id,ask){
   if(!sample||!canWrite){toast('PM 기능을 쓸 수 없어요');return}
   const key='idea:'+id,m=byId[id];if(!m||pmBusy[key])return;
-  pmBusy[key]=true;if(ideaModalId===id)openIdea(id);
+  pmBusy[key]=true;pmStart[key]=Date.now();delete pmErr[key];if(ideaModalId===id)openIdea(id);
   const thread=replies(id).map(r=>`${nameOf(r)}: ${r.text}`).join('\n');
   const prompt=`${TEAM_CONTEXT}
 
@@ -988,7 +1009,7 @@ scores는 각각 1~5 정수(effort는 클수록 손이 많이 감), nextSteps는
     const patch={pm};if(ideaStage(m)==='seed')patch.stage='grow';
     await db.doc('msgs/'+id).update(patch);
     toast('🤖 PM 분석이 나왔어요');
-  }catch(e){if(e&&e.code)sampleErr(e);else fail(e)}
+  }catch(e){pmFail(key,e)}
   pmBusy[key]=false;renderAll();
   if(ideaModalId===id)openIdea(id);
 }
@@ -996,8 +1017,8 @@ scores는 각각 1~5 정수(effort는 클수록 손이 많이 감), nextSteps는
 /* PM 아이디어 정리 (전체) */
 function ideaReviewHtml(){
   const busy=pmBusy.ideas,R=ideaReview&&ideaReview.data;
-  let h=`<div class="card pmcard"><h3>🤖 PM 아이디어 정리<span class="r">${sample?`<button class="tbtn" id="irBtn" ${busy||!canWrite?'disabled':''}>${R?'새로 정리':'정리 받기'}</button>`:''}</span></h3><div class="cbody">`;
-  if(busy) h+=`<div class="typing" style="padding:4px 0">${PM_NAME}가 아이디어 전체를 살펴보는 중 <span class="dots"><span></span><span></span><span></span></span></div>`;
+  let h=`<div class="card pmcard"><h3>🤖 PM 아이디어 정리<span class="r">${sample?`<button class="tbtn" id="irBtn" ${busy||!canWrite?'disabled':''}>${R?'새로 정리':'정리 받기'}</button>`:''}</span></h3><div class="cbody">${!busy&&pmErr.ideas?pmErrHtml('ideas'):''}`;
+  if(busy) h+=`<div class="typing" style="padding:4px 0">${PM_NAME}가 아이디어 전체를 살펴보는 중 <span class="dots"><span></span><span></span><span></span></span>${elapsedHtml('ideas')}</div>`;
   else if(!R) h+=`<div class="pmout">아이디어가 쌓이면 PM이 <b>지금 키울 아이디어 TOP 3</b>, 비슷해서 합칠 것, 미뤄도 될 것, 아직 아무도 안 꺼낸 방향을 정리해줘요.</div>`;
   else{
     const link=id=>byId[id]?`<button class="ilink" data-oi="${id}">${esc(String(byId[id].text).slice(0,70))}</button>`:'';
@@ -1024,7 +1045,7 @@ async function pmReviewIdeas(){
   if(pmBusy.ideas)return;
   const L=msgs.filter(m=>m.kind==='idea');
   if(L.length<2){toast('아이디어가 2개 이상 있어야 정리할 수 있어요');return}
-  pmBusy.ideas=true;renderAll();
+  pmBusy.ideas=true;pmStart.ideas=Date.now();delete pmErr.ideas;renderAll();
   const lines=L.slice(-120).map(m=>`[id:${m.id}] (${STAGES[ideaStage(m)].l}, 👍${votes(m)}, 💬${replies(m.id).length}${m.pm&&m.pm.verdict?', PM추천:'+m.pm.verdict:''}, ${nameOf(m)}) ${String(m.text).replace(/\n+/g,' / ').slice(0,300)}`).join('\n');
   const prompt=`${TEAM_CONTEXT}
 
@@ -1051,7 +1072,7 @@ top 최대 3개, merge 0~3개, park 0~4개, missing 1~2개.`;
       missing:A(r.missing).filter(x=>typeof x==='string'&&x.trim()).slice(0,2).map(x=>x.slice(0,200))};
     await db.doc('pm/ideas').set({data,ts:Date.now(),by:myNick||''});
     toast('🤖 아이디어 정리가 나왔어요');
-  }catch(e){if(e&&e.code)sampleErr(e);else fail(e)}
+  }catch(e){pmFail('ideas',e)}
   pmBusy.ideas=false;renderAll();
 }
 
@@ -1081,7 +1102,10 @@ function mapSvg(){
   return `<svg viewBox="0 0 400 400" role="img" aria-label="파트별 논의 지도">${h}</svg>`;
 }
 function briefingHtml(){
-  if(pmBusy.brief) return `<div class="typing" style="padding:4px 0">${PM_NAME}가 팀 기록 전체를 읽고 있어요 <span class="dots"><span></span><span></span><span></span></span></div><div class="pmout" id="briefStream" style="font-size:12px;color:var(--mute);max-height:80px;overflow:hidden"></div>`;
+  return (!pmBusy.brief&&pmErr.brief?pmErrHtml('brief'):'')+briefingBody();
+}
+function briefingBody(){
+  if(pmBusy.brief) return `<div class="typing" style="padding:4px 0">${PM_NAME}가 팀 기록 전체를 읽고 있어요 <span class="dots"><span></span><span></span><span></span></span>${elapsedHtml('brief')}</div><div class="pmout" id="briefStream" style="font-size:12px;color:var(--mute);max-height:80px;overflow:hidden"></div>`;
   if(!briefing||!briefing.data) return `<div class="pmout">아직 브리핑이 없어요. <b>“브리핑 받기”</b>를 누르면 PM 클로드가 지금까지의 대화·결정·할일을 읽고 이번 주 우선순위, 정해야 할 것, 리스크, 다음 회의 안건을 정리해요.<br><small style="color:var(--mute)">결과는 팀 모두에게 공유돼요.</small></div>`;
   const b=briefing.data;const sc={good:'🟢',watch:'🟡',risk:'🔴'};
   let h=`<div class="headline">${esc(b.headline||'')}</div>`;
@@ -1229,7 +1253,7 @@ let briefCtl=null;
 async function runBriefing(){
   if(!sample||!canWrite){toast('PM 기능을 쓸 수 없어요');return}
   if(pmBusy.brief)return;
-  pmBusy.brief=true;renderAll();
+  pmBusy.brief=true;pmStart.brief=Date.now();delete pmErr.brief;renderAll();
   const prompt=`${TEAM_CONTEXT}
 
 오늘: ${today()} (요청: ${myNick||'팀원'})
@@ -1248,7 +1272,7 @@ health는 논의가 있는 파트만, priorities 3~5개, decisions 2~4개, risks
     const data=await sample.json(prompt,{cache:false,onText:({text})=>{const el=$('briefStream');if(el)el.textContent=text.slice(-240)}});
     if(!data||typeof data!=='object')throw{code:'invalid_json'};
     await db.doc('pm/briefing').set({data,ts:Date.now(),by:myNick||''});
-  }catch(e){if(e&&e.code)sampleErr(e);else fail(e)}
+  }catch(e){pmFail('brief',e)}
   pmBusy.brief=false;renderAll();
 }
 

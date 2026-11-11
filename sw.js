@@ -2,7 +2,7 @@
  * 앱 화면 파일만 보관해서 빨리 열리게 해요. 대화 데이터는 저장하지 않아요.
  * 화면 파일을 고쳐 올릴 때 VERSION 숫자를 하나 올리면 모든 폰이 새 버전을 받아요.
  */
-const VERSION = 'adracer-talk-v3';
+const VERSION = 'adracer-talk-v4';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -25,7 +25,7 @@ self.addEventListener('fetch', e => {
   // 앱 화면: 인터넷이 되면 항상 최신, 안 되면 보관본
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req).then(res => {
+      fetch(req.url, {cache: 'no-cache', credentials: 'same-origin'}).then(res => {   // 항상 서버에 새 버전 확인
         const copy = res.clone();
         caches.open(VERSION).then(c => c.put('index.html', copy));
         return res;
