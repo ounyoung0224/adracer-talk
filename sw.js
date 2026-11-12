@@ -2,7 +2,7 @@
  * 앱 화면 파일만 보관해서 빨리 열리게 해요. 대화 데이터는 저장하지 않아요.
  * 화면 파일을 고쳐 올릴 때 VERSION 숫자를 하나 올리면 모든 폰이 새 버전을 받아요.
  */
-const VERSION = 'adracer-talk-v4';
+const VERSION = 'adracer-talk-v6';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

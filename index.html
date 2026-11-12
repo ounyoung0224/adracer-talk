@@ -298,6 +298,44 @@ input.pill{padding:2px 6px}
 .pmerr{background:#fde8e6;color:#9b1c1c;border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:10px;line-height:1.5}
 .pmerr small{color:#b45454}
 .elapsed{color:var(--mute);font-size:12px;font-weight:600}
+/* meetings & rules */
+.rulewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.rulewrap svg{display:block;width:100%;min-width:640px;height:auto}
+.mtform textarea{min-height:140px;font-size:13px}
+.mtrow{display:flex;gap:8px;flex-wrap:wrap}
+.mtrow .fld{flex:1;min-width:160px}
+.mtsec h4{font-size:14.5px;font-weight:700;margin:14px 0 6px}
+.mtsec h4:first-child{margin-top:0}
+.mtsec ul{margin:0 0 4px 18px;font-size:14px;line-height:1.6}
+.mtmeta{font-size:12px;color:var(--mute)}
+.dtab{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
+.dtab td,.dtab th{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+.dtab th{font-size:12px;color:var(--mute);font-weight:600}
+.dtab td .tbtn{white-space:nowrap}
+/* attachments */
+.atray{display:flex;flex-wrap:wrap;gap:6px;padding:8px 8px 0}
+.achip{display:inline-flex;align-items:center;gap:6px;max-width:240px;border:1px solid var(--line);border-radius:8px;padding:4px 6px 4px 4px;font-size:12.5px;background:#fafafa}
+.achip img{width:28px;height:28px;object-fit:cover;border-radius:5px}
+.achip .ai{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.achip .an{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.achip .an small{display:block;color:var(--mute);font-size:11px}
+.achip.err{border-color:#f5b5b5;background:#fff5f5}
+.achip button{font-size:13px;color:var(--mute);padding:0 2px}
+.cbox.drag{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.atts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.aimg{padding:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;line-height:0;background:#f4f4f4}
+.aimg img{display:block;max-width:240px;max-height:200px;width:auto;height:auto}
+.afile{display:flex;align-items:center;gap:10px;min-width:220px;max-width:320px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;text-align:left}
+.afile:hover{border-color:#bbb}
+.afile .ai{font-size:22px}
+.afile .an{flex:1;overflow:hidden}
+.afile .an b{display:block;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.afile .an small{font-size:11.5px;color:var(--mute)}
+.afile .ad{color:var(--mute)}
+.fview img{display:block;max-width:100%;max-height:70vh;margin:0 auto;border-radius:8px}
+.fview .acts{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.fview .acts a{display:inline-block;padding:8px 14px;border-radius:8px;border:1px solid var(--line);font-weight:600;font-size:14px;color:var(--ink);text-decoration:none}
+.fview .acts a.pri{background:var(--accent);border-color:var(--accent);color:#fff}
 /* login */
 .login{position:fixed;inset:0;background:var(--side);display:none;align-items:center;justify-content:center;padding:16px;z-index:80;overflow-y:auto}
 .login.on{display:flex}
@@ -392,7 +430,7 @@ let db=null,user=null,sample=null,me=null,myNick=null,isOwner=false,canWrite=tru
 let msgs=[],byId={},members={},membersLoaded=false,briefing=null;
 const S={view:'home',ch:'all',thread:null,taskFilter:'all',decQ:'',draft:{kind:'note',assignee:'',due:'',extra:[],showParts:false},tdraft:{text:''}};
 let pmBusy={}; // key -> true (channel or thread)
-let token=null,pmEnabled=false,ideaReview=null;
+let token=null,pmEnabled=false,ideaReview=null,meetings=[];
 let lastSeen={};try{lastSeen=JSON.parse(localStorage.getItem('ar_seen')||'{}')}catch(e){}
 
 /* ================= helpers ================= */
@@ -436,6 +474,7 @@ function unread(c){
 /* ================= navigation ================= */
 function go(view,ch){
   S.view=view; if(ch) S.ch=ch;
+  S.meeting=null;
   if(view!=='chan') S.thread=null;
   const h=view==='chan'?(S.ch==='pm'?'pm':'c-'+S.ch):view;
   if(location.hash!=='#'+h){try{history.replaceState(null,'','#'+h)}catch(e){}}
@@ -444,7 +483,7 @@ function go(view,ch){
 }
 function fromHash(){
   const h=location.hash.slice(1);
-  if(h==='tasks'||h==='decisions'||h==='ideas'||h==='home'||h==='help') return go(h);
+  if(h==='tasks'||h==='decisions'||h==='ideas'||h==='meetings'||h==='rules'||h==='home'||h==='help') return go(h);
   if(h==='pm') return go('chan','pm');
   if(h.startsWith('c-')&&(h.slice(2)==='all'||PMAP[h.slice(2)])) return go('chan',h.slice(2));
   go('home');
@@ -466,6 +505,8 @@ function renderSide(){
   h+=item(S.view==='decisions','✅','결정 · 질문','data-v="decisions"',qN||'');
   const iN=msgs.filter(m=>m.kind==='idea'&&ideaStage(m)==='seed').length;
   h+=item(S.view==='ideas','💡','아이디어 랩','data-v="ideas"',iN||'');
+  h+=item(S.view==='meetings','📝','회의록','data-v="meetings"');
+  h+=item(S.view==='rules','🧭','운영 규칙 · 돈의 흐름','data-v="rules"');
   h+=item(S.view==='help','📖','사용 매뉴얼','data-v="help"');
   if(!isStandalone()) h+=item(false,'📲','폰에 앱으로 설치','data-inst="1"');
   h+=`</div><div class="sgroup"><h5>파트별 채널</h5>`;
@@ -489,13 +530,15 @@ function renderTop(){
   else if(S.view==='tasks'){t='📋 할일 보드';s='할 일 → 진행 중 → 완료';a=`<button class="addbtn" id="aTask">+ 할일</button>`}
   else if(S.view==='decisions'){t='✅ 결정 · 질문';s='팀이 정한 것과 아직 정해야 할 것'}
   else if(S.view==='ideas'){t='💡 아이디어 랩';s='떠오른 아이디어를 심고, 같이 키우고, PM과 다듬어요'}
+  else if(S.view==='meetings'){t='📝 회의록';s='받아쓰기를 올리면 PM이 회의록으로 정리해요'}
+  else if(S.view==='rules'){t='🧭 운영 규칙 · 돈의 흐름';s='요금 · 디파짓 · 노쇼 처리 — 회의에서 정한 기준'}
   else if(S.view==='help'){t='📖 사용 매뉴얼';s='업무톡과 PM 클로드 쓰는 법'}
   else if(S.ch==='pm'){t='🤖 '+PM_NAME;s='프로젝트 매니저 · 물어보면 팀 기록 전체를 보고 답해요'}
   else if(S.ch==='all'){t='🏁 전체 대화';s='팀의 메인 채널 · 모든 파트의 대화가 모이고, 여기 쓴 글은 모두가 봐요'}
   else{const p=PMAP[S.ch];t=`<span class="dot" style="background:${p.color};width:10px;height:10px"></span># ${p.ch}`;s=p.topic}
   if(S.view==='chan'&&S.ch!=='pm'&&sample) a=`<button class="tbtn pm" id="aSum">🤖 <span class="long">PM 채널 정리</span><span>정리</span></button>`;
   $('ttl').innerHTML=t;$('ttlSub').textContent=s;$('topActions').innerHTML=a;
-  if($('aMeet')) $('aMeet').onclick=openMeeting;
+  if($('aMeet')) $('aMeet').onclick=()=>go('meetings');
   if($('aTask')) $('aTask').onclick=()=>openTaskEditor(null);
   if($('aSum')) $('aSum').onclick=()=>pmSummarizeChannel(S.ch);
   // shorten long labels: show only one of spans
@@ -535,7 +578,7 @@ function msgHtml(m,inThread){
     ${avatar(name)}
     <div class="mb">
       <div class="mh"><b>${esc(name)}</b>${m.bot?'<span class="appb">앱</span>':''}<span class="t">${hm(m.ts)}</span></div>
-      <div class="mt ${done?'done':''}">${linkify(m.text)}</div>
+      ${m.text?`<div class="mt ${done?'done':''}">${linkify(m.text)}</div>`:''}${filesHtml(m)}
       ${chipsHtml(m,{noParts:S.view==='chan'&&S.ch!=='all'&&S.ch!=='pm'&&(m.parts||[]).length===1})}
       ${sug}${rx}${thr}
     </div>
@@ -549,6 +592,7 @@ function msgHtml(m,inThread){
 }
 function bindMsgs(root){
   root.querySelectorAll('[data-c2]').forEach(b=>b.onclick=()=>go('chan',b.dataset.c2));
+  root.querySelectorAll('[data-fv]').forEach(b=>b.onclick=e=>{e.stopPropagation();const [mid,i]=b.dataset.fv.split(':');openFile(mid,+i)});
   root.querySelectorAll('[data-th]').forEach(b=>b.onclick=e=>{e.stopPropagation();openThread(b.dataset.th)});
   root.querySelectorAll('[data-rx],[data-q]').forEach(b=>b.onclick=e=>{e.stopPropagation();toggleReact(b.dataset.id,b.dataset.rx||b.dataset.q)});
   root.querySelectorAll('[data-more]').forEach(b=>b.onclick=e=>{e.stopPropagation();openActions(b.dataset.more)});
@@ -624,10 +668,10 @@ function renderComposer(hostId,ctx){
   const host=$(hostId);if(!host)return;
   if(!db||!canWrite){host.innerHTML=`<div class="ro">${dbFail?'저장소에 연결되지 않았어요.':'로그인하면 글을 쓸 수 있어요.'}</div>`;return}
   const key=ctx.rootId?'t:'+ctx.rootId:'c:'+ctx.chan;
-  const d=drafts[key]||(drafts[key]={text:'',kind:'note',assignee:'',due:'',extra:[],showParts:false});
+  const d=drafts[key]||(drafts[key]={text:'',kind:'note',assignee:'',due:'',extra:[],showParts:false,files:[]});if(!d.files)d.files=[];
   const isThread=!!ctx.rootId, isPM=ctx.chan==='pm';
   const ph=isPM?`${PM_NAME}에게 물어보기`:isThread?'답글 달기… (@PM 으로 PM 호출)':(ctx.chan==='all'?'🏁 전체 대화에 메시지 보내기 · 팀 모두가 봐요':`#${PMAP[ctx.chan].ch}에 메시지 보내기`);
-  let h=`<div class="comp"><div class="cbox ${ctx.chan==='all'&&!isThread?'hubbox':''}"><textarea rows="1" id="ta-${hostId}" placeholder="${esc(ph)}">${esc(d.text)}</textarea>`;
+  let h=`<div class="comp"><div class="cbox ${ctx.chan==='all'&&!isThread?'hubbox':''}">${d.files.length?`<div class="atray">${d.files.map((f,i)=>`<span class="achip ${f.state==='err'?'err':''}">${f.thumb?`<img src="${f.thumb}" alt="">`:`<span class="ai">${f.state==='up'?'⏳':fileIcon(f)}</span>`}<span class="an">${esc(f.name)}<small>${f.state==='up'?'올리는 중…':f.state==='err'?esc(f.err||'실패'):fmtSize(f.size)}</small></span><button data-ax="${i}" aria-label="빼기">✕</button></span>`).join('')}</div>`:''}<textarea rows="1" id="ta-${hostId}" placeholder="${esc(ph)}">${esc(d.text)}</textarea>`;
   if(d.showParts&&!isPM){
     h+=`<div class="ptray">${PARTS.map(p=>{const fixed=ctx.chan===p.id;const on=fixed||d.extra.includes(p.id);return `<button class="chip ${on?'on':''}" data-pp="${p.id}" ${fixed?'disabled':''}><span class="dot" style="background:${p.color}"></span>${p.name}</button>`}).join('')}</div>`;
   }
@@ -641,14 +685,24 @@ function renderComposer(hostId,ctx){
     const pc=(ctx.chan&&ctx.chan!=='all'?1:0)+d.extra.length;
     h+=`<button class="pill ${d.showParts?'on':''}" data-tp>🏷 파트${pc?' '+pc:''}</button>`;
     if(sample) h+=`<button class="pill" data-at title="PM 호출">🤖 @PM</button>`;
+    h+=`<button class="pill" data-att title="파일 첨부 (10MB까지)">📎 파일</button><input type="file" data-fi multiple hidden>`;
   }
-  h+=`<span class="sp"></span><button class="sendb ${d.text.trim()?'ready':''}" data-send aria-label="보내기">➤</button></div></div>`;
+  const canSend=(d.text.trim()||d.files.some(f=>f.state==='ok'))&&!d.files.some(f=>f.state==='up');
+  h+=`<span class="sp"></span><button class="sendb ${canSend?'ready':''}" data-send aria-label="보내기">➤</button></div></div>`;
   if(!isPM&&!isThread&&ctx.chan==='all'&&!d.extra.length) h+=`<div class="chint">🏷 파트를 고르면 해당 채널과 사업 지도에도 기록돼요</div>`;
   h+=`</div>`;
   host.innerHTML=h;
   const ta=$('ta-'+hostId);
   const auto=()=>{ta.style.height='auto';ta.style.height=Math.min(160,ta.scrollHeight)+'px'};auto();
-  ta.oninput=()=>{d.text=ta.value;auto();host.querySelector('[data-send]').classList.toggle('ready',!!ta.value.trim())};
+  ta.oninput=()=>{d.text=ta.value;auto();host.querySelector('[data-send]').classList.toggle('ready',(!!ta.value.trim()||d.files.some(f=>f.state==='ok'))&&!d.files.some(f=>f.state==='up'))};
+  const rer=()=>{renderComposer(hostId,ctx);const t=$('ta-'+hostId);if(t)t.focus()};
+  if(!isPM){
+    ta.onpaste=e=>{const fs=e.clipboardData&&e.clipboardData.files;if(fs&&fs.length){e.preventDefault();attachFiles(fs,d,rer)}};
+    const box=host.querySelector('.cbox');
+    box.ondragover=e=>{if(e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files')){e.preventDefault();box.classList.add('drag')}};
+    box.ondragleave=()=>box.classList.remove('drag');
+    box.ondrop=e=>{box.classList.remove('drag');const fs=e.dataTransfer&&e.dataTransfer.files;if(fs&&fs.length){e.preventDefault();attachFiles(fs,d,rer)}};
+  }
   ta.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&window.matchMedia('(pointer:fine)').matches){e.preventDefault();send(ctx,d,hostId)}};
   const q=s=>host.querySelector(s);
   if(q('[data-k]')) q('[data-k]').onchange=e=>{d.kind=e.target.value;renderComposer(hostId,ctx);$('ta-'+hostId).focus()};
@@ -658,26 +712,34 @@ function renderComposer(hostId,ctx){
   if(q('[data-at]')) q('[data-at]').onclick=()=>{if(!/@PM/.test(d.text)){d.text=('@PM '+d.text).trimEnd()+' '}renderComposer(hostId,ctx);const t=$('ta-'+hostId);t.focus();t.setSelectionRange(t.value.length,t.value.length)};
   host.querySelectorAll('[data-pp]').forEach(b=>b.onclick=()=>{const p=b.dataset.pp,i=d.extra.indexOf(p);if(i>=0)d.extra.splice(i,1);else if(d.extra.length<3)d.extra.push(p);renderComposer(hostId,ctx)});
   q('[data-send]').onclick=()=>send(ctx,d,hostId);
+  if(q('[data-att]')) q('[data-att]').onclick=()=>q('[data-fi]').click();
+  if(q('[data-fi]')) q('[data-fi]').onchange=e=>{const fs=Array.from(e.target.files||[]);e.target.value='';attachFiles(fs,d,rer)};
+  host.querySelectorAll('[data-ax]').forEach(b=>b.onclick=()=>{d.files.splice(+b.dataset.ax,1);rer()});
   host.dataset.s=compStamp();
 }
 let sending=false;
 async function send(ctx,d,hostId){
-  const text=d.text.trim();if(!text||sending)return;
+  const text=d.text.trim();
+  if(!d.files)d.files=[];
+  if(d.files.some(f=>f.state==='up')){toast('파일을 다 올린 뒤에 보낼게요. 잠시만요');return}
+  const files=d.files.filter(f=>f.state==='ok').map(f=>{const x={id:f.id,name:f.name,size:f.size,type:f.type};if(f.thumb)x.thumb=f.thumb;return x});
+  if((!text&&!files.length)||sending)return;
   if(!myNick){openNick();return}
   sending=true;
   const root=ctx.rootId?byId[ctx.rootId]:null;
   let parts=root?(root.parts||[]).slice():[];
   if(!root){if(ctx.chan&&ctx.chan!=='all'&&ctx.chan!=='pm')parts.push(ctx.chan);d.extra.forEach(p=>{if(!parts.includes(p))parts.push(p)})}
   const doc={text,parts,kind:ctx.chan==='pm'?'note':d.kind,uid:me,ts:Date.now(),done:false};
+  if(files.length)doc.files=files;
   if(root) doc.replyTo=root.id;
   if((root&&root.chan==='pm')||ctx.chan==='pm') doc.chan='pm';
   if(doc.kind==='todo'){doc.status='todo';if(d.assignee)doc.assignee=d.assignee;if(d.due)doc.due=d.due}
   if(doc.kind==='idea')doc.stage='seed';
   try{
     const ref=await db.collection('msgs').add(doc);
-    Object.assign(d,{text:'',kind:'note',assignee:'',due:'',extra:[],showParts:false});
+    Object.assign(d,{text:'',kind:'note',assignee:'',due:'',extra:[],showParts:false,files:[]});
     renderComposer(hostId,ctx);
-    const wantsPM=ctx.chan==='pm'||/@pm/i.test(text);
+    const wantsPM=!!text&&(ctx.chan==='pm'||/@pm/i.test(text));
     if(wantsPM&&sample){
       if(ctx.chan==='pm'&&!root) askPM({question:text,chan:'pm'});
       else{if(!root)S.thread=ref.id;askPM({question:text,rootId:root?root.id:ref.id,rootObj:root||Object.assign({id:ref.id},doc)})}
@@ -851,6 +913,72 @@ function renderDecisions(){
   $('pane').querySelectorAll('[data-qd]').forEach(b=>b.onclick=e=>{e.stopPropagation();if(canWrite)upd(b.dataset.qd,{done:!byId[b.dataset.qd].done})});
   $('pane').querySelectorAll('[data-gi]').forEach(b=>b.onclick=e=>{e.stopPropagation();go('ideas')});
   $('pane').querySelectorAll('[data-open]').forEach(r=>r.onclick=()=>{const m=byId[r.dataset.open];S.view='chan';S.ch=m.chan==='pm'?'pm':((m.parts||[])[0]||'all');S.thread=m.id;renderAll(true)});
+}
+
+/* ================= 첨부 파일 ================= */
+const MAX_UP=10*1024*1024;
+function fmtSize(n){n=Number(n)||0;return n<1024?n+'B':n<1048576?(n/1024).toFixed(0)+'KB':(n/1048576).toFixed(1)+'MB'}
+function fileIcon(f){const t=(f.type||'')+' '+(f.name||'');return /image/.test(t)?'🖼':/pdf/i.test(t)?'📕':/(sheet|excel|csv|xlsx?)/i.test(t)?'📊':/(presentation|powerpoint|pptx?|key)/i.test(t)?'📽':/(word|docx?|hwp|text|\.txt|\.md)/i.test(t)?'📄':/(zip|compressed)/i.test(t)?'🗜':/(audio|m4a|mp3|wav)/i.test(t)?'🎧':/(video|mp4|mov)/i.test(t)?'🎬':'📎'}
+function filesHtml(m){
+  const F=m.files||[];if(!F.length)return '';
+  return `<div class="atts">${F.map((f,i)=>f.thumb
+    ?`<button class="aimg" data-fv="${m.id}:${i}" title="${esc(f.name)}"><img src="${esc(f.thumb)}" alt="${esc(f.name)}" loading="lazy"></button>`
+    :`<button class="afile" data-fv="${m.id}:${i}"><span class="ai">${fileIcon(f)}</span><span class="an"><b>${esc(f.name)}</b><small>${fmtSize(f.size)}</small></span><span class="ad">⬇</span></button>`).join('')}</div>`;
+}
+const toB64=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]||'');r.onerror=()=>rej({code:'file',message:'파일을 읽지 못했어요.'});r.readAsDataURL(blob)});
+function loadImg(file){return new Promise(res=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>res({im,u});im.onerror=()=>{URL.revokeObjectURL(u);res(null)};im.src=u})}
+/* 사진은 긴 변 1920px로 줄여서 올리고(용량 절약), 대화창에 보일 작은 미리보기를 만들어요 */
+async function imgPrep(file){
+  const L=await loadImg(file);if(!L)return {};
+  const {im,u}=L,w=im.naturalWidth,h=im.naturalHeight,out={};
+  try{
+    const draw=(max,q)=>{const k=Math.min(1,max/Math.max(w,h)),c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);return {c,q}};
+    const t=draw(360,0.7);out.thumb=t.c.toDataURL('image/jpeg',0.7);
+    if(out.thumb.length>38000)out.thumb=draw(240,0.6).c.toDataURL('image/jpeg',0.6);
+    if(/^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type)&&(Math.max(w,h)>1920||file.size>1.5e6)){
+      const f=draw(1920,0.85);out.blob=await new Promise(r=>f.c.toBlob(r,'image/jpeg',0.85));
+    }
+  }catch(e){}
+  URL.revokeObjectURL(u);return out;
+}
+async function attachFiles(list,d,rer){
+  if(!d.files)d.files=[];
+  const room=4-d.files.length;if(room<=0){toast('한 번에 4개까지 보낼 수 있어요');return}
+  const L=Array.from(list).slice(0,room);
+  if(list.length>room)toast('한 번에 4개까지 보낼 수 있어요');
+  for(const f of L){
+    if(f.size>MAX_UP){toast(`${f.name}: 10MB 이하만 올릴 수 있어요`);continue}
+    const item={state:'up',name:f.name||'붙여넣은 이미지.png',size:f.size,type:f.type||''};d.files.push(item);rer();
+    try{
+      let blob=f,name=item.name;
+      if(/^image\//i.test(f.type)){const r=await imgPrep(f);if(r.thumb)item.thumb=r.thumb;if(r.blob){blob=r.blob;name=name.replace(/\.[^.]+$/,'')+'.jpg'}}
+      if(blob.size>MAX_UP)throw {code:'too_big',message:'10MB를 넘어요'};
+      const meta=await gs('api_upload',token,{name,type:blob.type||f.type||'application/octet-stream',data:await toB64(blob)});
+      Object.assign(item,meta,{state:'ok'});
+    }catch(e){if(e&&e.code==='unauthenticated'){logout(e.message);return}item.state='err';item.err=(e&&e.message)||'업로드 실패'}
+    rer();
+  }
+}
+const fileCache=new Map();
+async function openFile(mid,i){
+  const m=byId[mid],f=m&&m.files&&m.files[i];if(!f)return;
+  openModal({title:`${fileIcon(f)} ${esc(f.name)}`,body:`<div class="fview" id="fv"><div class="typing" style="padding:12px 0;text-align:center">파일을 불러오는 중… <span class="dots"><span></span><span></span><span></span></span></div></div>`,noFoot:true});
+  $('sheet').classList.add('wide');
+  try{
+    let url=fileCache.get(f.id);
+    if(!url){
+      const r=await gs('api_file',token,f.id);
+      const bin=atob(r.data),u8=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)u8[k]=bin.charCodeAt(k);
+      url=URL.createObjectURL(new Blob([u8],{type:r.type||f.type||'application/octet-stream'}));fileCache.set(f.id,url);
+    }
+    const el=$('fv');if(!el)return;
+    const isImg=/^image\//.test(f.type||'')||!!f.thumb;
+    el.innerHTML=`${isImg?`<img src="${url}" alt="${esc(f.name)}">`:`<div style="text-align:center;padding:10px 0 4px"><div style="font-size:44px">${fileIcon(f)}</div><div style="font-weight:700;margin-top:6px;word-break:break-all">${esc(f.name)}</div><div class="mtmeta">${fmtSize(f.size)}</div></div>`}
+      <div class="acts"><a class="pri" href="${url}" download="${esc(f.name)}">⬇ 저장</a><a href="${url}" target="_blank" rel="noopener">↗ 새 창에서 열기</a></div>`;
+  }catch(e){
+    if(e&&e.code==='unauthenticated'){logout(e.message);return}
+    const el=$('fv');if(el)el.innerHTML=`<div class="pmerr">⚠️ ${esc((e&&e.message)||'파일을 열지 못했어요.')}</div>`;
+  }
 }
 
 /* ================= PM 진행·오류 표시 ================= */
@@ -1076,6 +1204,256 @@ top 최대 3개, merge 0~3개, park 0~4개, missing 1~2개.`;
   pmBusy.ideas=false;renderAll();
 }
 
+/* ================= 회의록 ================= */
+const MT_STATUS={'확정':'decision','잠정':'todo','검토':'question'};
+let meetQ={date:'',title:'',spk:'',text:'',file:''};
+const meetById=id=>meetings.find(m=>m.id===id);
+const meetingsSorted=()=>meetings.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||(b.ts||0)-(a.ts||0));
+/* PM이 모든 요청에서 최근 회의 결정·할일을 함께 읽게 해요 */
+function meetingDigest(){
+  const L=meetingsSorted().slice(0,3);if(!L.length)return '';
+  return '\n\n[최근 회의록]\n'+L.map(m=>{const d=m.data||{};
+    return `■ ${m.date} ${m.title}: ${d.summary||''}\n`+(d.decisions||[]).map(x=>`- 결정(${x.status}) ${x.topic}: ${x.decision}`).join('\n')+((d.todos||[]).length?'\n'+(d.todos||[]).map(x=>`- 할일 ${x.text}${x.owner?' · '+x.owner:''}${x.due?' · '+x.due:''}`).join('\n'):'');
+  }).join('\n').slice(0,12000);
+}
+/* 받아쓰기 정리: "Participants 1 00:02" 같은 화자 줄을 합쳐 짧게 만들어요 */
+function compactTranscript(raw,spk){
+  const map={};String(spk||'').split(/[,\n]/).forEach(p=>{const m=p.match(/^\s*(?:Participants?|참석자|화자|Speaker|P)?\s*(\d+)\s*[=:]\s*(.+?)\s*$/i);if(m)map[m[1]]=m[2]});
+  const lines=String(raw).replace(/\r/g,'').split('\n');
+  const head=/^\s*(?:Participants?|참석자|화자|Speaker)\s*(\d+)\s+(\d{1,2}:\d{2}(?::\d{2})?)\s*$/i;
+  const out=[];let who=null,buf=[],t0='',matched=0;
+  const flush=()=>{if(who!==null&&buf.length)out.push(`[${t0}] ${who}: ${buf.join(' ')}`);buf=[]};
+  for(const ln of lines){
+    const m=ln.match(head);
+    if(m){matched++;const w=map[m[1]]||('화자'+m[1]);if(w!==who){flush();who=w;t0=m[2]}continue}
+    const t=ln.trim();if(t)buf.push(t);
+  }
+  flush();
+  if(!matched)return String(raw).replace(/\r/g,'').replace(/\n{2,}/g,'\n').trim();
+  return out.join('\n');
+}
+function normMeeting(r){
+  const A=v=>Array.isArray(v)?v:[],T=(v,k)=>String(v||'').slice(0,k);
+  return {summary:T(r.summary,600),speakerGuess:T(r.speakerGuess,300),
+    decisions:A(r.decisions).filter(d=>d&&d.decision).slice(0,15).map(d=>({topic:T(d.topic,60),decision:T(d.decision,320),status:MT_STATUS[d.status]?d.status:'검토',added:!!d.added})),
+    sections:A(r.sections).filter(x=>x&&x.heading).slice(0,8).map(x=>({heading:T(x.heading,60),points:A(x.points).filter(p=>typeof p==='string'&&p.trim()).slice(0,8).map(p=>p.slice(0,300))})),
+    todos:A(r.todos).filter(t=>t&&t.text).slice(0,14).map(t=>({text:T(t.text,220),owner:[...NICKS,'다같이'].includes(t.owner)?t.owner:'',due:/^\d{4}-\d{2}-\d{2}$/.test(t.due||'')?t.due:'',part:PMAP[t.part]?t.part:'',added:!!t.added})),
+    questions:A(r.questions).map(q=>typeof q==='string'?{text:q}:q).filter(q=>q&&q.text&&String(q.text).trim()).slice(0,12).map(q=>({text:T(q.text,300),added:!!q.added})),
+    next:T(r.next,300),source:r.source==='claude'?'claude':'pm',rules:!!r.rules};
+}
+function upsertMeeting(m){const i=meetings.findIndex(x=>x.id===m.id);if(i>=0)meetings[i]=m;else meetings.push(m)}
+async function saveMeeting(m){const saved=await W(()=>gs('api_saveMeeting',token,m));upsertMeeting(saved);return saved}
+function openMeetingDetail(id){S.view='meetings';S.meeting=id;S.thread=null;try{history.replaceState(null,'','#meetings')}catch(e){}$('app').classList.remove('nav');renderAll(true)}
+
+function renderMeetings(){
+  if(S.meeting){const m=meetById(S.meeting);if(m)return renderMeetingDetail(m);S.meeting=null}
+  const L=meetingsSorted(),busy=pmBusy.meet;
+  let h=`<div class="scroll"><div class="page" style="max-width:900px">`;
+  SEED_MEETINGS.filter(x=>!meetById(x.id)).forEach(x=>{
+    h+=`<div class="card hubcard"><h3>📥 ${esc(x.date)} ${esc(x.title)}<span class="r"><button class="tbtn hubbtn" data-seed="${x.id}" ${canWrite?'':'disabled'}>업무톡에 저장</button></span></h3><div class="cbody"><div class="pmout">Claude가 회의 녹음 받아쓰기로 정리한 회의록이에요. 저장하면 팀 모두가 보고, 결정과 할일을 업무톡에 바로 등록할 수 있어요.</div></div></div>`;
+  });
+  h+=`<div class="card pmcard"><h3>🤖 받아쓰기로 회의록 만들기</h3><div class="cbody mtform">`;
+  if(!sample) h+=`<div class="pmout">PM 기능이 꺼져 있어서 회의록을 만들 수 없어요.</div>`;
+  else if(busy) h+=`<div class="typing" style="padding:4px 0">${PM_NAME}가 회의 내용을 읽고 정리하는 중 <span class="dots"><span></span><span></span><span></span></span>${elapsedHtml('meet')}</div><div class="pmout" style="font-size:12.5px">긴 회의는 1~2분 걸려요. 화면을 켜 두세요.</div>`;
+  else{
+    h+=pmErrHtml('meet');
+    h+=`<div class="mtrow"><div class="fld"><label>회의 날짜</label><input type="date" id="mtDate" value="${esc(meetQ.date||today())}"></div>
+      <div class="fld" style="flex:2"><label>제목 (비우면 PM이 지어요)</label><input id="mtTitle" maxlength="80" value="${esc(meetQ.title)}" placeholder="예) 월요일 정기 회의"></div></div>
+    <div class="fld"><label>받아쓰기 파일 (.txt)</label><input type="file" id="mtFile" accept=".txt,.md,.srt,.vtt,.csv,text/plain">${meetQ.file?`<div class="mtmeta" style="margin-top:4px">📄 ${esc(meetQ.file)} 불러옴 · ${meetQ.text.length.toLocaleString()}자</div>`:''}</div>
+    <div class="fld"><label>또는 받아쓰기 내용 붙여넣기</label><textarea id="mtText" placeholder="클로바노트 등에서 받아쓴 내용을 붙여넣으세요">${esc(meetQ.text)}</textarea></div>
+    <div class="fld"><label>화자 이름 (선택)</label><input id="mtSpk" value="${esc(meetQ.spk)}" placeholder="예) 1=선영, 2=운영, 3=승준 — 비우면 PM이 추정해요"></div>
+    <button class="btn dark" id="mtGo" ${canWrite?'':'disabled'}>🤖 PM에게 회의록 맡기기</button>
+    <div class="chint">녹음 파일(m4a 등)은 바로 올릴 수 없어요. 클로바노트나 휴대폰 녹음 앱에서 받아쓰기를 텍스트로 내보내 올려 주세요.</div>`;
+  }
+  h+=`</div></div>`;
+  h+=`<div class="card"><h3>📚 회의록 <span style="color:var(--mute);font-weight:500">${L.length}</span></h3><div>`+(L.length?L.map(m=>`<div class="lrow" data-mt="${m.id}"><span style="font-size:18px">📝</span><div class="x"><div class="t"><b>${esc(m.title||'회의')}</b></div><div class="mm"><span>${esc(m.date||'')}</span><span>${esc(String((m.data&&m.data.summary)||'').slice(0,90))}</span></div></div></div>`).join(''):'<div class="empty" style="padding:18px">아직 회의록이 없어요.</div>')+`</div></div>`;
+  h+=`</div></div>`;
+  $('pane').innerHTML=h;
+  const bindIn=(id,k)=>{const e=$(id);if(e)e.oninput=()=>{meetQ[k]=e.value}};
+  bindIn('mtDate','date');bindIn('mtTitle','title');bindIn('mtSpk','spk');
+  if($('mtText'))$('mtText').oninput=()=>{meetQ.text=$('mtText').value};
+  if($('mtFile'))$('mtFile').onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    if(/\.(docx?|hwp|pdf|m4a|mp3|wav|aac)$/i.test(f.name)){toast('텍스트(.txt) 파일만 올릴 수 있어요');e.target.value='';return}
+    if(f.size>3e6){toast('파일이 너무 커요 (3MB 이하)');e.target.value='';return}
+    const r=new FileReader();r.onload=()=>{meetQ.text=String(r.result||'');meetQ.file=f.name;renderAll()};r.readAsText(f,'utf-8');
+  };
+  if($('mtGo'))$('mtGo').onclick=pmMakeMeeting;
+  $('pane').querySelectorAll('[data-mt]').forEach(b=>b.onclick=()=>openMeetingDetail(b.dataset.mt));
+  $('pane').querySelectorAll('[data-seed]').forEach(b=>b.onclick=async()=>{
+    const x=SEED_MEETINGS.find(y=>y.id===b.dataset.seed);if(!x)return;b.disabled=true;
+    try{const saved=await saveMeeting(x);toast('📝 회의록을 저장했어요');openMeetingDetail(saved.id)}catch(e){b.disabled=false;fail(e)}
+  });
+}
+async function pmMakeMeeting(){
+  if(!sample||!canWrite){toast('PM 기능을 쓸 수 없어요');return}
+  if(pmBusy.meet)return;
+  const raw=String(meetQ.text||'').trim();
+  if(raw.length<200){toast('받아쓰기 내용이 너무 짧아요');return}
+  const tx=compactTranscript(raw,meetQ.spk);
+  if(tx.length>150000){toast('회의가 너무 길어요. 반으로 나눠서 올려 주세요');return}
+  const date=meetQ.date||today(),title=meetQ.title.trim();
+  pmBusy.meet=true;pmStart.meet=Date.now();delete pmErr.meet;renderAll();
+  const prompt=`${TEAM_CONTEXT}
+
+오늘: ${today()} / 요청: ${myNick||'팀원'}
+[업무톡 최근 기록 — 맥락 참고용]
+${digest(80)}
+
+[회의 정보] 날짜: ${date}${title?` / 제목: ${title}`:''}${meetQ.spk?` / 화자: ${meetQ.spk}`:''}
+[회의 받아쓰기] 자동 받아쓰기라 오타와 화자 구분 오류가 있어요. 맥락으로 바로잡아 이해하되, 받아쓰기에 없는 내용은 지어내지 마.
+${tx}
+
+PM으로서 이 회의의 회의록을 써줘. 결정은 확정(합의됨)/잠정(방향은 정했지만 숫자·세부 미정)/검토(추가 확인 필요)로 구분해. 할일의 담당은 맡겠다고 한 사람(운영|선영|승준|다같이), 말로 나온 기한은 회의 날짜 기준 실제 날짜로 바꿔.
+JSON 하나로만:
+{"title":"회의 제목","summary":"회의 결과 2~3문장","speakerGuess":"화자 번호→이름 추정. 확실치 않으면 그렇다고","decisions":[{"topic":"주제","decision":"결정 내용 한두 문장","status":"확정|잠정|검토"}],"sections":[{"heading":"안건","points":["요점 한 줄"]}],"todos":[{"text":"할일","owner":"담당","due":"YYYY-MM-DD 또는 빈 문자열","part":"파트 id"}],"questions":["남은 질문"],"next":"다음 회의 일정·안건, 없으면 빈 문자열"}
+decisions 최대 15, sections 최대 8(points 각 6개 이내), todos 최대 12, questions 최대 10.`;
+  try{
+    const r=await sample.json(prompt,{cache:false});
+    if(!r||typeof r!=='object')throw{code:'invalid_json'};
+    const saved=await saveMeeting({date,title:(title||String(r.title||'회의')).slice(0,80),data:normMeeting(r)});
+    meetQ={date:'',title:'',spk:'',text:'',file:''};
+    pmBusy.meet=false;toast('📝 회의록을 만들었어요');openMeetingDetail(saved.id);return;
+  }catch(e){pmFail('meet',e)}
+  pmBusy.meet=false;renderAll();
+}
+function renderMeetingDetail(m){
+  const d=m.data||{};
+  let h=`<div class="scroll"><div class="page" style="max-width:900px">`;
+  h+=`<div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap"><button class="tbtn" id="mtBack">← 회의록 목록</button>${d.rules?`<button class="tbtn hubbtn" id="mtRules">🧭 요금·디파짓·노쇼 흐름 보기</button>`:''}</div>`;
+  h+=`<div class="card"><div class="cbody"><div class="mtmeta">${esc(m.date||'')} · ${d.source==='claude'?'Claude가 정리':`${PM_NAME}가 정리`}${m.by?` · ${esc(m.by)} 저장`:''}</div><div style="font-size:20px;font-weight:800;margin:4px 0 8px">${esc(m.title||'회의')}</div>${d.summary?`<div class="headline">${esc(d.summary)}</div>`:''}${d.speakerGuess?`<div class="mtmeta">🎙 ${esc(d.speakerGuess)}</div>`:''}</div></div>`;
+  const D=d.decisions||[];
+  if(D.length) h+=`<div class="card"><h3>✅ 결정 <span style="color:var(--mute);font-weight:500">${D.length}</span></h3><div class="cbody" style="overflow-x:auto"><table class="dtab"><tr><th>주제</th><th>결정</th><th>상태</th><th></th></tr>${D.map((x,i)=>`<tr><td><b>${esc(x.topic)}</b></td><td>${esc(x.decision)}</td><td><span class="kb ${MT_STATUS[x.status]||'grey'}">${esc(x.status)}</span></td><td>${x.status==='확정'?`<button class="tbtn" data-md="${i}" ${x.added||!canWrite?'disabled':''}>${x.added?'등록됨':'결정 로그로'}</button>`:''}</td></tr>`).join('')}</table></div></div>`;
+  const SC=d.sections||[];
+  if(SC.length) h+=`<div class="card"><h3>🗂 안건별 정리</h3><div class="cbody mtsec">${SC.map(x=>`<h4>${esc(x.heading)}</h4><ul>${(x.points||[]).map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`).join('')}</div></div>`;
+  const TD=d.todos||[];
+  if(TD.length) h+=`<div class="card"><h3>📌 할일 <span style="color:var(--mute);font-weight:500">${TD.length}</span></h3><div class="cbody">${TD.map((x,i)=>`<div class="pmrow"><span>📌</span><div class="x">${esc(x.text)}${x.owner?` · <b>${esc(x.owner)}</b>`:''}${x.due?` · ${dueLabel(x.due)}`:''}</div><button data-mtd="${i}" ${x.added||!canWrite?'disabled':''}>${x.added?'등록됨':'할일로'}</button></div>`).join('')}</div></div>`;
+  const Q=d.questions||[];
+  if(Q.length) h+=`<div class="card"><h3>❓ 남은 질문 <span style="color:var(--mute);font-weight:500">${Q.length}</span></h3><div class="cbody">${Q.map((x,i)=>`<div class="pmrow"><span>❓</span><div class="x">${esc(x.text)}</div><button data-mq="${i}" ${x.added||!canWrite?'disabled':''}>${x.added?'등록됨':'질문으로'}</button></div>`).join('')}</div></div>`;
+  if(d.next) h+=`<div class="card"><h3>📅 다음 회의</h3><div class="cbody"><div class="pmout">${esc(d.next)}</div></div></div>`;
+  h+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 24px"><button class="tbtn hubbtn" id="mtShare" ${canWrite?'':'disabled'}>📣 전체 대화에 요약 공유</button><button class="tbtn" id="mtDel" ${canWrite?'':'disabled'}>🗑 삭제</button></div>`;
+  h+=`</div></div>`;
+  $('pane').innerHTML=h;
+  $('mtBack').onclick=()=>go('meetings');
+  if($('mtRules'))$('mtRules').onclick=()=>go('rules');
+  const mark=async(key,i)=>{const data=JSON.parse(JSON.stringify(d));data[key][i].added=true;try{await saveMeeting({id:m.id,date:m.date,title:m.title,data});renderAll()}catch(e){fail(e)}};
+  $('pane').querySelectorAll('[data-md]').forEach(b=>b.onclick=async()=>{const x=D[+b.dataset.md];b.disabled=true;if(await createItem({kind:'decision',text:`${x.topic}: ${x.decision}`,src:'meeting'}))mark('decisions',+b.dataset.md);else b.disabled=false});
+  $('pane').querySelectorAll('[data-mtd]').forEach(b=>b.onclick=async()=>{const x=TD[+b.dataset.mtd];b.disabled=true;if(await createItem({kind:'todo',text:x.text,assignee:x.owner,due:x.due,part:x.part,src:'meeting'}))mark('todos',+b.dataset.mtd);else b.disabled=false});
+  $('pane').querySelectorAll('[data-mq]').forEach(b=>b.onclick=async()=>{const x=Q[+b.dataset.mq];b.disabled=true;if(await createItem({kind:'question',text:x.text,src:'meeting'}))mark('questions',+b.dataset.mq);else b.disabled=false});
+  $('mtShare').onclick=async()=>{
+    if(!myNick){openNick();return}
+    const dec=D.filter(x=>x.status==='확정').slice(0,8).map(x=>`· ${x.topic}: ${x.decision}`).join('\n');
+    const text=`📝 회의록 · ${m.title} (${m.date})\n${d.summary||''}${dec?`\n\n확정된 결정\n${dec}`:''}\n\n전체 내용은 📝 회의록 메뉴에서 볼 수 있어요.`;
+    $('mtShare').disabled=true;
+    try{await db.collection('msgs').add({text,kind:'note',parts:[],uid:me,ts:Date.now(),done:false,src:'meeting'});toast('전체 대화에 공유했어요')}catch(e){$('mtShare').disabled=false;fail(e)}
+  };
+  $('mtDel').onclick=()=>openModal({title:'회의록 삭제',body:`<p style="font-size:14px">'${esc(m.title)}' 회의록을 지울까요? 되돌릴 수 없어요. 이미 등록한 할일·결정은 그대로 남아요.</p>`,ok:'삭제',onOk:async()=>{try{await W(()=>gs('api_deleteMeeting',token,m.id));meetings=meetings.filter(x=>x.id!==m.id);closeModal();go('meetings');toast('삭제했어요')}catch(e){fail(e)}}});
+}
+
+/* ================= 운영 규칙 · 돈의 흐름 ================= */
+function ruleSvg(){
+  const ink='#1d1c1d',quiet='#616061',edge='#a8a59c',acc='#ff5a1f',good='#2eb67d',warn='#e8a317';
+  const box=(cx,y,w,h,c)=>`<rect x="${cx-w/2}" y="${y}" width="${w}" height="${h}" rx="8" fill="${c||'none'}" fill-opacity="${c?0.12:1}" stroke="${c||edge}" stroke-width="${c?2:1.25}"/>`;
+  const t=(x,y,str,o)=>`<text x="${x}" y="${y}" text-anchor="${(o&&o.a)||'middle'}" font-size="${(o&&o.s)||13}" font-weight="${(o&&o.w)||400}" fill="${(o&&o.f)||ink}">${str}</text>`;
+  const arrow=d=>`<path d="${d}" fill="none" stroke="${edge}" stroke-width="1.25" marker-end="url(#rf-arrow)"/>`;
+  const W=150,a=[105,285,465,645];
+  return `<svg viewBox="0 0 760 480" role="img" aria-label="완주해야 정산되고, 참가자 사유로 빠지면 디파짓을 잃어요" font-family="inherit"><defs><marker id="rf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${edge}"/></marker></defs>`
+   +t(24,34,'완주해야 정산되고, 참가자 사유로 빠지면 디파짓을 잃어요',{a:'start',s:15,w:700})
+   +t(24,56,'참가자 기준 돈의 흐름 · 11/11 회의 결정 (디파짓 분배는 검토 중)',{a:'start',s:11.5,f:quiet})
+   +arrow(`M${a[0]+W/2} 110H${a[1]-W/2}`)+arrow(`M${a[1]+W/2} 110H${a[2]-W/2}`)+arrow(`M${a[2]+W/2} 110H${a[3]-W/2}`)
+   +arrow('M645 138V156H380V176')+arrow('M380 232V256')+arrow('M306 290H135V380')+arrow('M380 324V380')+arrow('M454 290H625V380')
+   +box(a[0],82,W,56)+t(a[0],106,'선수 등록',{w:600})+t(a[0],122,'연 1만 원 (대회 2회)',{s:11.5,f:quiet})
+   +box(a[1],82,W,56)+t(a[1],106,'대회 접수 증빙',{w:600})+t(a[1],122,'접수 완료 내역 업로드',{s:11.5,f:quiet})
+   +box(a[2],82,W,56)+t(a[2],106,'브랜드 제안 수락',{w:600})+t(a[2],122,'7일 안에 결정',{s:11.5,f:quiet})
+   +box(a[3],82,W,56,acc)+t(a[3],106,'계약 체결',{w:600})+t(a[3],122,'디파짓 20% 납부',{s:11.5})
+   +box(380,176,220,56)+t(380,200,'스티커 발송 → 대회 출전',{w:600})+t(380,216,'출발 전·완주 후 사진 + 기록증',{s:11.5,f:quiet})
+   +`<polygon points="306,290 380,256 454,290 380,324" fill="none" stroke="${edge}" stroke-width="1.25"/>`+t(380,294,'완주했나?')
+   +t(220,282,'참가자 사유로 미완주',{s:11.5,f:quiet})+t(388,356,'대회 취소·천재지변',{a:'start',s:11.5,f:quiet})+t(540,282,'완주',{s:11.5,f:quiet})
+   +box(135,380,220,72,warn)+t(135,404,'디파짓 몰수',{w:600})+t(135,420,'플랫폼 5% · 브랜드 15% (안)',{s:11.5})+t(135,436,'계약금 없음',{s:11.5,f:quiet})
+   +box(380,380,220,72)+t(380,404,'전액 반환',{w:600})+t(380,420,'브랜드에 광고비 전액 반환',{s:11.5})+t(380,436,'디파짓 반환, 계약금 없음',{s:11.5,f:quiet})
+   +box(625,380,220,72,good)+t(625,404,'정산',{w:600})+t(625,420,'계약금 지급 (수수료 10%)',{s:11.5})+t(625,436,'디파짓 반환',{s:11.5,f:quiet})
+   +`</svg>`;
+}
+function renderRules(){
+  const src=meetById('mt_20261111');
+  let h=`<div class="scroll"><div class="page" style="max-width:900px">`;
+  h+=`<div class="card"><h3>💸 돈의 흐름</h3><div class="cbody"><div class="rulewrap">${ruleSvg()}</div><div class="mtmeta" style="margin-top:8px">완주하면 수수료 10%를 떼고 계약금과 디파짓을 받고, 대회가 취소되면 디파짓만 돌려받고, 참가자 사유로 빠지면 디파짓을 잃어요. 휴대폰에서는 옆으로 밀어서 보세요.</div></div></div>`;
+  h+=`<div class="card"><h3>🧾 요금</h3><div class="cbody" style="overflow-x:auto"><table class="dtab">
+    <tr><th>항목</th><th>금액 · 규칙</th><th>상태</th></tr>
+    <tr><td><b>선수 등록 (스탠다드)</b></td><td>연 1만 원, 1년에 대회 신청 2회. 등록일로부터 12개월 뒤 갱신</td><td><span class="kb decision">확정</span></td></tr>
+    <tr><td><b>선수 등록 (무제한)</b></td><td>연 3만 원. 처음엔 '커밍순'으로만 보여주고, 고를 수 있는 대회가 충분해지면 오픈</td><td><span class="kb todo">잠정</span></td></tr>
+    <tr><td><b>대회 신청</b></td><td>무료</td><td><span class="kb decision">확정</span></td></tr>
+    <tr><td><b>디파짓</b></td><td>계약 체결 후 계약금의 20%를 납부해야 스티커 발송. 25~30% 의견도 있음</td><td><span class="kb todo">잠정</span></td></tr>
+    <tr><td><b>플랫폼 수수료</b></td><td>성사된 계약금의 10%</td><td><span class="kb decision">확정</span></td></tr>
+    <tr><td><b>얼리버드</b></td><td>무료는 없음. 할인으로만 (예: 50%)</td><td><span class="kb decision">확정</span></td></tr></table></div></div>`;
+  h+=`<div class="card"><h3>⚖️ 상황별 처리</h3><div class="cbody" style="overflow-x:auto"><table class="dtab">
+    <tr><th>상황</th><th>브랜드</th><th>참가자</th></tr>
+    <tr><td><b>완주</b> (대회 제한시간 안)</td><td>광고비 집행</td><td>계약금 지급(수수료 10% 제외) + 디파짓 반환</td></tr>
+    <tr><td><b>대회 취소·천재지변</b> (사전·도중)</td><td>전액 반환</td><td>계약금 없음, 디파짓 반환</td></tr>
+    <tr><td><b>참가자 사유</b> (부상·질병·늦잠·교통·일정·배터리 방전 등 사유 불문)</td><td>반환 + 위약금 성격으로 디파짓 일부 (15% 안)</td><td>계약금 없음, 디파짓 몰수</td></tr>
+    <tr><td><b>DNF</b> (제한시간 초과·중도 포기)</td><td>참가자 사유와 같음</td><td>참가자 사유와 같음</td></tr>
+    <tr><td><b>대리 참가</b> (배번 양도)</td><td>—</td><td>불가. 대회 규정 위반</td></tr></table></div></div>`;
+  h+=`<div class="card"><h3>📏 증빙 · 매칭 규칙</h3><div class="cbody mtsec"><ul>
+    <li>대회 접수: '접수 완료/신청 완료 내역'(메일 포함) 캡처나 PDF 업로드. 영수증은 받지 않음</li>
+    <li>매칭 제안: 받은 날부터 7일 안에 수락/거절. 무응답이면 취소되고, 수락하면 확정</li>
+    <li>완주 인증: 출발 전·완주 후 사진(촬영 시각이 보이게) + 대회 공식 기록증. 개인 기기 기록은 인정하지 않음</li>
+    <li>부착 부위: 대회마다 주최측 확인을 거쳐 허용된 부위만 선택지로 보여줌 (예: 수영 대회는 수모에 부착 불가)</li>
+    <li>검수: 플랫폼(본부)이 브랜드 가이드라인 기준으로 확인</li></ul></div></div>`;
+  h+=`<div class="card"><h3>🔍 아직 정해야 할 것</h3><div class="cbody mtsec"><ul>
+    <li>디파짓 몰수 조항이 법적으로 유효한지 — 변호사 자문 필요</li>
+    <li>몰수된 디파짓 20%의 분배 (플랫폼 5% + 브랜드 15% 안 vs 전액 브랜드)</li>
+    <li>디파짓 비율 20%가 노쇼를 막기에 충분한지</li></ul>
+    ${src?`<button class="tbtn" id="ruSrc" style="margin-top:8px">📝 근거: ${esc(src.date)} ${esc(src.title)}</button>`:''}</div></div>`;
+  h+=`</div></div>`;
+  $('pane').innerHTML=h;
+  if($('ruSrc'))$('ruSrc').onclick=()=>openMeetingDetail('mt_20261111');
+}
+
+/* 11/11 정리 회의 — Claude가 녹음 받아쓰기로 정리한 회의록 (업무톡에 한 번 저장하면 끝) */
+const SEED_MEETINGS=[{id:'mt_20261111',date:'2026-11-11',title:'정리 회의 — 요금·디파짓·인증·마일스톤',data:{source:'claude',rules:true,
+  summary:'소통 중 모호했던 부분을 정리한 회의로, 요금(연 1회 선수 등록)과 디파짓 20% 구조, 접수·완주 인증 방식, 내년 마일스톤(동아마라톤 → 쉬엄쉬엄 한강 3종 축제 → 가을 메이저)이 정해졌어요. 디파짓 분배와 법적 유효성은 추가 검토가 필요해요.',
+  speakerGuess:'받아쓰기의 화자 번호는 대화 내용으로 추정했어요: 1 = 선영, 2 = 운영, 3 = 승준.',
+  decisions:[
+    {topic:'참가자 요금',decision:'대회별 등록비 대신 연 1회 선수 등록: 1만 원(연 대회 신청 2회). 3만 원 무제한은 커밍순. 대회 신청은 무료',status:'확정'},
+    {topic:'무료 정책',decision:'무료는 두지 않고 얼리버드는 할인으로만',status:'확정'},
+    {topic:'노쇼 방지 디파짓',decision:'계약 체결 후 참가자가 계약금의 20%를 디파짓으로 내야 스티커 발송. 손해배상 청구는 하지 않음',status:'잠정'},
+    {topic:'몰수된 디파짓 분배',decision:'플랫폼 5% + 브랜드 15%(위약금 성격) 안. PM 검토 후 확정',status:'검토'},
+    {topic:'대회 취소·천재지변',decision:'브랜드에 전액 반환, 참가자는 계약금 없음(디파짓 반환)',status:'확정'},
+    {topic:'참가자 사유 미완주',decision:'부상·질병·늦잠·교통 등 사유 불문 디파짓 몰수 + 계약금 미지급. 브랜드 관점을 우선',status:'확정'},
+    {topic:'완주 기준',decision:'대회가 정한 제한시간 안에 들어오는 것만 완주로 인정',status:'확정'},
+    {topic:'본인 인증',decision:'휴대폰(PASS) 본인인증 필수, 이메일은 선택(뉴스레터용)',status:'확정'},
+    {topic:'접수 증빙',decision:"'접수 완료/신청 완료 내역'(메일 포함) 캡처나 PDF 업로드",status:'확정'},
+    {topic:'완주 인증',decision:'출발 전·완주 후 사진 + 공식 기록증. 플랫폼이 브랜드 가이드라인 기준으로 검수',status:'확정'},
+    {topic:'매칭 제안',decision:'제안 후 7일 안에 수락/거절, 무응답이면 취소. 수락하면 확정',status:'확정'},
+    {topic:'운동 성향 테스트',decision:'부가 기능이 아니라 핵심 기능. 최대 15문항, 결과는 동물 캐릭터 + 맞는 브랜드 카테고리',status:'확정'},
+    {topic:'참가자-브랜드 직거래',decision:'막을 방법이 없으니 수용. 플랫폼 홍보 효과로 본다',status:'확정'},
+    {topic:'고객 문의',decision:'자주 묻는 질문 + AI 챗봇 + 이메일. 게시판은 두지 않음',status:'확정'},
+    {topic:'집중 종목·대회',decision:'달리기 집중, 운영 이력 좋은 메이저 대회 위주, 서울 중심',status:'확정'}],
+  sections:[
+    {heading:'스티커 부착 부위',points:['부위 범위를 명확히(어깨·팔·가슴·등의 경계) — 승준이 몸 다이어그램으로 표시 예정','대회마다 허용 부위가 다름. 대회를 고르면 안 되는 부위는 자동 제외, 원치 않는 부위는 체크 해제','모든 대회는 주최측 확인 필수 — 허가 없이 했다가 참가가 막히면 큰 사고']},
+    {heading:'프로필 · 성향 테스트',points:['브랜드에 인스타·키·얼굴 사진 제공. 줄글 자기소개 대신 테스트 결과 해시태그','인스타는 선택이지만 입력할수록 매칭 확률이 오른다고 안내, 인증 시 배지','등급(브론즈·실버·골드)은 완주 횟수 기준, 등급이 오르면 매칭·단가 상승','성향 테스트는 OX·객관식 최대 15문항, 결과 캐릭터(치타·고릴라·가젤 등)로 바이럴과 마케팅 데이터 확보','테스트를 더 할수록 매칭 확률 게이지가 차오름']},
+    {heading:'요금 · 디파짓',points:['브랜드가 참가자 1명에게 쓰는 돈은 스티커당 1만~3만 원 수준으로 예상','손해배상 대신 디파짓: 돈이 미리 있고, 계약이 됐다는 설렘 속에서 내서 납득이 쉬움','우려: 디파짓이 작으면 \'그냥 내고 말지\'가 될 수 있음(프리코노믹스 유치원 벌금 사례)','초기엔 작은 브랜드와 시작']},
+    {heading:'운영',points:['고객 문의는 셋이 나눠서 확인, 규모가 커지면 채용','본부 페이지: 매칭 현황은 엑셀식 리스트 + 검색·필터 + 매칭률 대시보드','대회 정보 사이트를 연결해 대회 목록을 자동으로 가져오는 방식 검토']},
+    {heading:'내년 마일스톤',points:['0. 11/22 서울 아쿠아마라톤 — 운영의 내부 테스트','1. 동아마라톤 — 첫 출시·시스템 테스트','2. 쉬엄쉬엄 한강 3종 축제(6월, 뚝섬) — 확장 + 현장 부스로 바이럴','3. 가을 메이저 마라톤(춘천 등) — 서울 메이저로 확대']}],
+  todos:[
+    {text:"아쿠아마라톤용 Ad-racer 로고 기본형 제작 ('AR' 단독 표기는 피하기)",owner:'선영',due:'2026-11-12',part:'naming'},
+    {text:'피부 안전 표기가 있는 방수 스티커 업체 정하고 주문',owner:'승준',due:'2026-11-13',part:'product'},
+    {text:'서울시철인3종협회 스티커 부착 허용 답변 확인',owner:'운영',due:'2026-11-20',part:'legal'},
+    {text:'아쿠아마라톤 참가 — 로고 부착·사진 인증까지 테스트',owner:'운영',due:'2026-11-22',part:'runner'},
+    {text:'사업계획서 완성 (돈 흐름·매출 구조, 선영 추가 내용 반영)',owner:'승준',due:'2026-11-13',part:'plan'},
+    {text:'웹사이트 작업 이어가기, 본부·브랜드 페이지 보완',owner:'승준',due:'2026-11-16',part:'product'},
+    {text:'운동 성향 테스트 질문지 + 레퍼런스 조사',owner:'선영',due:'',part:'marketing'},
+    {text:'스포츠 대회 스폰서 계약의 불가항력·취소 관행 조사',owner:'승준',due:'',part:'legal'},
+    {text:'디파짓 분배·계약 변수 목록을 PM과 검토',owner:'운영',due:'',part:'revenue'}],
+  questions:[
+    {text:'디파짓을 규칙에 따라 돌려주지 않아도 법적으로 괜찮은가? 변수 목록 정리 후 변호사 자문'},
+    {text:"참가자 계약을 건마다 앱 안 '동의합니다' 수준으로 해도 되는가?"},
+    {text:'몰수된 디파짓 20% 분배: 플랫폼 5% + 브랜드 15% vs 전액 브랜드'},
+    {text:'디파짓 20%가 노쇼를 막기에 충분한가? (25~30% 의견)'},
+    {text:'내년에 몇 개 대회를 열지 목표 정하기'},
+    {text:'모르는 브랜드에 단가를 테스트하는 방법 (지인 브랜드는 선의로 답할 수 있음)'}],
+  next:'11/16 (월) 오전, 선영 집. 운영은 운동 후 합류(9시 반 언급) — 시간 재확인'}}];
+
 /* ================= home / PM dashboard ================= */
 function partStats(){
   const st={};PARTS.forEach(p=>st[p.id]={n:0,dec:0,todo:0,q:0,last:0,links:{}});
@@ -1163,10 +1541,10 @@ function digest(limit=320){
     if(m.parts&&m.parts.length)s+=`(${m.parts.join(',')})`;
     if(m.replyTo)s+=` ↪답글`;
     if(m.chan==='pm')s+=' {PM채팅}';
-    return s+' '+String(m.text).replace(/\n+/g,' / ').slice(0,400);
+    return s+' '+String(m.text||'').replace(/\n+/g,' / ').slice(0,400)+((m.files||[]).length?` [첨부: ${m.files.map(f=>f.name).join(', ')}]`:'');
   });
   let t=lines.join('\n');if(t.length>90000)t=t.slice(-90000);
-  return t;
+  return t+meetingDigest();
 }
 function sampleErr(e){
   const c=e&&e.code;
@@ -1320,7 +1698,7 @@ function renderHelp(){
   const sec=(id,ic,title,body)=>`<div class="card" id="h-${id}"><h3>${ic} ${title}</h3><div class="cbody help">${body}</div></div>`;
   let h=`<div class="scroll"><div class="page" style="max-width:760px">`;
   h+=`<h2>📖 업무톡 사용 매뉴얼</h2><div class="sub">처음이라면 1~3번만 읽어도 바로 쓸 수 있어요.</div>`;
-  h+=`<div class="toc">${[['start','1. 시작하기'],['install','📲 앱 설치'],['chan','2. 채널과 메시지'],['kind','3. 메시지 종류'],['thread','4. 스레드·반응'],['tasks','5. 할일 보드'],['dec','6. 결정·질문'],['ideas','💡 아이디어 랩'],['pm','7. PM 클로드'],['rules','8. 팀 규칙 제안'],['faq','9. 자주 묻는 질문'],['backup','10. 백업·이전']].map(([k,l])=>`<button class="fb" data-h="${k}">${l}</button>`).join('')}</div>`;
+  h+=`<div class="toc">${[['start','1. 시작하기'],['install','📲 앱 설치'],['chan','2. 채널과 메시지'],['files','📎 파일 첨부'],['kind','3. 메시지 종류'],['thread','4. 스레드·반응'],['tasks','5. 할일 보드'],['dec','6. 결정·질문'],['ideas','💡 아이디어 랩'],['meet','📝 회의록'],['rules','🧭 운영 규칙'],['pm','7. PM 클로드'],['rules','8. 팀 규칙 제안'],['faq','9. 자주 묻는 질문'],['backup','10. 백업·이전']].map(([k,l])=>`<button class="fb" data-h="${k}">${l}</button>`).join('')}</div>`;
   h+=sec('start','🚀','1. 시작하기',`<ol>
     <li><b>가입하기 (처음 한 번)</b> — 로그인 화면의 <b>처음이에요 (가입)</b> 탭에서 이름(<b>운영 / 선영 / 승준</b>)을 고르고, 각자 비밀번호(8자 이상)와 관리자에게 받은 <b>팀 가입 코드</b>를 넣어요.</li>
     <li><b>로그인</b> — 다음부터는 이름과 비밀번호로 들어와요. 한 기기에서 한 번 로그인하면 30일 동안 유지돼요. 왼쪽 아래 <b>계정</b>에서 이름 변경·비밀번호 변경·로그아웃을 할 수 있어요.</li>
@@ -1337,6 +1715,11 @@ function renderHelp(){
     <ul><li><b>보내기</b> — 컴퓨터는 Enter (줄바꿈은 Shift+Enter), 휴대폰은 ➤ 버튼.</li>
     <li><b>🏷 파트</b> — 한 메시지가 여러 파트에 걸치면 파트를 추가하세요(최대 3개). 두 채널에 모두 보이고, 사업 지도에서 두 파트가 선으로 이어져요.</li>
     <li>안 읽은 메시지가 있는 채널은 <b>굵은 글씨 + 숫자</b>로 표시돼요.</li></ul>`);
+  h+=sec('files','📎','📎 파일 첨부',`<ul>
+    <li>입력창 아래 <b>📎 파일</b>을 누르거나, 사진을 <b>붙여넣기(Ctrl+V)</b>하거나, 입력창에 <b>끌어다 놓으면</b> 첨부돼요. 한 번에 4개, 파일당 10MB까지.</li>
+    <li>사진은 대화창에 미리보기로 보이고, 누르면 크게 보거나 저장할 수 있어요. 큰 사진은 자동으로 줄여서 올려요.</li>
+    <li>문서·PDF는 카드로 보이고, 누르면 열거나 저장할 수 있어요. 글 없이 파일만 보내도 돼요.</li>
+    <li>파일은 관리자의 구글 드라이브 <b>'Ad-racer 업무톡 파일'</b> 폴더에 저장되고, <b>업무톡에 로그인한 팀원만</b> 열 수 있어요. 메시지를 삭제하면 파일도 휴지통으로 가요.</li></ul>`);
   h+=sec('kind','🏷','3. 메시지 종류 — 이게 핵심이에요',`<p>입력창 왼쪽 아래 <b>💬 메시지</b> 버튼에서 종류를 골라요. 종류를 붙이면 <b>잊혀지지 않고</b> 할일 보드·결정 로그에 자동으로 모여요.</p>
     <table class="ht">
     <tr><td><span class="kb grey">💬 메시지</span></td><td>일반 대화, 의견</td></tr>
@@ -1366,6 +1749,13 @@ function renderHelp(){
     <tr><td><b>🤖 PM과 키우기</b></td><td>카드를 열고 누르면 PM이 한 줄 피치, 왜 해볼 만한지, 지금 우선순위와의 관계, 리스크, <b>가장 싸게 검증하는 실험</b>, 점수(임팩트·노력·방향), 추천, 다음 할일을 정리해요. 물어볼 게 있으면 같이 적어요. 다음 할일은 <b>할일로</b> 버튼으로 바로 등록돼요. 분석을 받으면 씨앗은 '키우는 중'으로 옮겨져요.</td></tr>
     <tr><td><b>🤖 PM 아이디어 정리</b></td><td>랩 맨 위 버튼. 아이디어 전체를 보고 <b>지금 키울 TOP 3</b>, 합쳐볼 것, 미뤄도 될 것, 아직 안 나온 방향을 알려줘요.</td></tr></table>
     <p class="note">💡 추천 흐름: 떠오르면 바로 심기 → 주 1회 <b>PM 아이디어 정리</b> → TOP 아이디어는 <b>PM과 키우기</b>로 검증 실험 정하기 → 해볼 만하면 🚀 실행 준비 → 할일로.</p>`);
+  h+=sec('meet','📝','📝 회의록 — 받아쓰기를 올리면 PM이 정리',`<ol>
+    <li>회의를 녹음하고, <b>클로바노트</b>나 휴대폰 녹음 앱으로 받아쓰기를 만들어 <b>텍스트(.txt)로 내보내요.</b> 녹음 파일(m4a)은 바로 올릴 수 없어요.</li>
+    <li><b>📝 회의록</b> 메뉴 → 날짜를 고르고 받아쓰기 파일을 올리거나 내용을 붙여넣어요. 화자 이름(예: 1=선영, 2=운영)을 적으면 더 정확해요.</li>
+    <li><b>PM에게 회의록 맡기기</b>를 누르고 1~2분 기다려요. 요약 · 결정(확정/잠정/검토) · 안건별 정리 · 할일 · 남은 질문 · 다음 회의가 나와요.</li>
+    <li>결정은 <b>결정 로그로</b>, 할일은 <b>할일로</b>, 질문은 <b>질문으로</b> 버튼 하나로 업무톡에 등록해요. <b>전체 대화에 요약 공유</b>로 팀에 알려요.</li></ol>
+    <p class="note">PM은 브리핑·@PM 질문·아이디어 분석 때 <b>최근 회의록 3개</b>도 함께 읽어요.</p>`);
+  h+=sec('rules','🧭','🧭 운영 규칙 · 돈의 흐름',`<p>회의에서 정한 요금 · 디파짓 · 노쇼 처리 · 증빙 규칙을 한 화면에 모았어요. 참가자 기준 돈의 흐름도와 상황별 처리 표가 있어요. 규칙이 바뀌면 Claude에게 화면 수정을 요청하세요.</p>`);
   h+=sec('pm','🤖','7. PM 클로드 — 우리 팀 프로젝트 매니저',`<p>PM 클로드는 업무톡에 쌓인 <b>모든 대화·결정·할일을 읽고</b> 정리·제안해요. 호출할 때만 움직여요.</p>
     <table class="ht">
     <tr><td><b>🏠 홈 → PM 브리핑</b></td><td>파트별 상태(🟢🟡🔴), 이번 주 우선순위, 팀이 정해야 할 것, 리스크, 다음 회의 안건. 항목 옆 버튼으로 바로 할일·질문 등록. <b>주 1회(예: 월요일)</b> 받는 걸 추천해요. 결과는 셋 모두에게 보여요.</td></tr>
@@ -1442,12 +1832,14 @@ function renderAll(scroll){
   const v=S.view+':'+S.ch;const changed=v!==lastView;lastView=v;
   const fs=$('feedScroll');const keep=fs&&!changed?{top:fs.scrollTop,near:fs.scrollHeight-fs.scrollTop-fs.clientHeight<140}:null;
   // preserve focus in composer
-  const ae=document.activeElement;const aid=ae&&ae.id&&(ae.id.startsWith('ta-')||ae.id==='iqT'||ae.id==='dq')?ae.id:null;const sel=aid?ae.selectionStart:0;
+  const ae=document.activeElement;const aid=ae&&ae.id&&(ae.id.startsWith('ta-')||['iqT','dq','mtTitle','mtText','mtSpk'].includes(ae.id))?ae.id:null;const sel=aid?ae.selectionStart:0;
   if(S.view!=='chan')$('pane').dataset.k='';
   if(S.view==='home')renderHome();
   else if(S.view==='tasks')renderTasks();
   else if(S.view==='decisions')renderDecisions();
   else if(S.view==='ideas')renderIdeas();
+  else if(S.view==='meetings')renderMeetings();
+  else if(S.view==='rules')renderRules();
   else if(S.view==='help')renderHelp();
   else renderChannel(scroll||changed);
   if(keep){const n=$('feedScroll');if(n)n.scrollTop=keep.near?n.scrollHeight:keep.top}
@@ -1519,7 +1911,7 @@ async function poll(){
     if(seq!==writeSeq||pendingWrites>0){polling=false;if(!pendingWrites)pollAgain=true;if(pollAgain){pollAgain=false;poll()}return}
     if(netBad){netBad=false;banner('')}
     if(r&&!r.same){
-      store.rev=r.rev;store.msgs=r.msgs||[];store.members=r.members||[];store.briefing=r.briefing||null;ideaReview=r.ideaReview||null;
+      store.rev=r.rev;store.msgs=r.msgs||[];store.members=r.members||[];store.briefing=r.briefing||null;ideaReview=r.ideaReview||null;meetings=Array.isArray(r.meetings)?r.meetings:[];
       if(r.me&&r.me.nick)myNick=r.me.nick;
       if(!!r.pmEnabled!==pmEnabled){pmEnabled=!!r.pmEnabled;sample=pmEnabled?mkSample():null}
       emit();
@@ -1558,7 +1950,7 @@ function logout(msg){
   const t=token;token=null;saveTok(null);clearTimeout(pollT);
   if(t&&!msg)gs('api_logout',t).catch(()=>{});
   db=null;sample=null;me=null;myNick=null;canWrite=false;pmEnabled=false;
-  msgs=[];byId={};members={};briefing=null;ideaReview=null;S.thread=null;
+  msgs=[];byId={};members={};briefing=null;ideaReview=null;meetings=[];S.thread=null;S.meeting=null;
   store.rev=null;store.msgs=[];store.members=[];store.briefing=null;store.ls={msgs:[],members:[],brief:[]};
   lmode='in';closeModal();banner('');renderAll();showLogin(msg||'');
 }
